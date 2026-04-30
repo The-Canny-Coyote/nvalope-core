@@ -1,0 +1,41 @@
+# CSP is enforced here (Cloudflare applies _headers after its own script injections, so CF scripts are covered).
+# unsafe-inline is retained until Rocket Loader is disabled in the Cloudflare dashboard and Web Analytics
+# is switched to an explicit <script defer src="beacon.min.js"> tag in index.html.
+# connect-src is scoped to known endpoints; widen only if a new runtime fetch target is added (and update privacy.html).
+#
+# WebLLM / WASM: only add cross-origin isolation if you confirm the runtime needs it and you can fix CORP for
+# every third-party asset (analytics, CDNs). Example (often breaks embeds — use docs/troubleshooting.md first):
+#   Cross-Origin-Opener-Policy: same-origin
+#   Cross-Origin-Embedder-Policy: credentialless
+
+# Root and index: avoid long cache so users get fresh HTML after deploy (and correct hashed asset URLs)
+/
+  Cache-Control: no-cache
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; script-src-elem 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.workers.dev https://cdn.jsdelivr.net https://raw.githubusercontent.com https://static.cloudflareinsights.com https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co https://*.huggingfaceusercontent.com https://cas-bridge.xethub.hf.co https://*.xethub.hf.co; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
+/index.html
+  Cache-Control: no-cache
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; script-src-elem 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.workers.dev https://cdn.jsdelivr.net https://raw.githubusercontent.com https://static.cloudflareinsights.com https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co https://*.huggingfaceusercontent.com https://cas-bridge.xethub.hf.co https://*.xethub.hf.co; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
+/install-pwa.html
+  Cache-Control: no-cache
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; script-src-elem 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.workers.dev https://cdn.jsdelivr.net https://raw.githubusercontent.com https://static.cloudflareinsights.com https://huggingface.co https://hf.co https://*.hf.co https://*.huggingface.co https://*.huggingfaceusercontent.com https://cas-bridge.xethub.hf.co https://*.xethub.hf.co; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
+/license.html
+  Cache-Control: public, max-age=86400
+  Content-Security-Policy: frame-ancestors 'none'
+/privacy.html
+  Cache-Control: public, max-age=86400
+  Content-Security-Policy: frame-ancestors 'none'
+/terms.html
+  Cache-Control: public, max-age=86400
+  Content-Security-Policy: frame-ancestors 'none'
+/user-guide.html
+  Cache-Control: public, max-age=86400
+  Content-Security-Policy: frame-ancestors 'none'
+
+# Hashed assets: safe to cache forever; avoids stale HTML pointing at old 404ing assets
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Ensure OG image is served with correct type for Facebook/crawlers
+/og-image.png
+  Content-Type: image/png
+  Cache-Control: public, max-age=86400

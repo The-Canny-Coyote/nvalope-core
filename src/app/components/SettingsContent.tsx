@@ -1,0 +1,111 @@
+import React, { useRef } from 'react';
+import type { MutableRefObject } from 'react';
+import { AppearanceSettings } from '@/app/components/settings/AppearanceSettings';
+import { FeatureToggles } from '@/app/components/settings/FeatureToggles';
+import { BackupSettings } from '@/app/components/settings/BackupSettings';
+import type { BackupSettingsSnapshot } from '@/app/constants/settings';
+
+export interface SettingsContentProps {
+  enabledModules: string[];
+  enableModule: (moduleId: string) => void;
+  disableModule: (moduleId: string) => void;
+  enableCache: () => void;
+  onChooseBackupFolder: () => void;
+  /** Download full backup (budget + settings + app data). Pass optional password to encrypt. */
+  onDownloadFullBackup?: (password?: string) => void;
+  getBackupPasswordRef?: MutableRefObject<string | null>;
+  setBackupPassword?: (p: string | null) => void;
+  onCheckForUpdates: () => void;
+  checkingForUpdate: boolean;
+  /** Called after a successful backup import with layout/wheel scale from the backup (if present). */
+  onApplySettingsFromBackup?: (settings: BackupSettingsSnapshot) => void;
+  /** When true, user has chosen a backup folder; show status in Data Management. */
+  hasBackupFolder?: boolean | null;
+  /** Before opening Feature toggles collapsibles (Core / Optional). */
+  onBeforeOpenFeatureCollapsibles?: () => void;
+  /** Before opening Data Management collapsible. */
+  onBeforeOpenDataMgmt?: () => void;
+  /** Call after collapsible content has expanded to restore main scroll position. */
+  restoreScrollAfterLayout?: () => void;
+  /** When true, the app is in card layout; show option at top to switch back to section wheel. */
+  useCardLayout?: boolean;
+  /** Switch from card layout back to section wheel. */
+  setUseCardLayout?: (v: boolean) => void;
+  /** When true, the viewport is mobile-sized; hide the wheel/cards toggle since mobile is cards-only. */
+  isMobile?: boolean;
+  /** Lifted from App: Core features collapsible open state. */
+  coreFeaturesOpen?: boolean;
+  onCoreFeaturesOpenChange?: (open: boolean) => void;
+  /** Lifted from App: Optional features collapsible open state. */
+  optionalFeaturesOpen?: boolean;
+  onOptionalFeaturesOpenChange?: (open: boolean) => void;
+  /** Navigate to the Accessibility section. Accessibility was removed from the
+   *  bottom nav to free a slot, so Settings is now the primary entry point. */
+  onOpenAccessibility?: () => void;
+}
+
+export function SettingsContent({
+  enabledModules,
+  enableModule,
+  disableModule,
+  enableCache,
+  onChooseBackupFolder,
+  onDownloadFullBackup,
+  getBackupPasswordRef,
+  setBackupPassword,
+  onCheckForUpdates,
+  checkingForUpdate,
+  onApplySettingsFromBackup,
+  hasBackupFolder = null,
+  onBeforeOpenFeatureCollapsibles,
+  onBeforeOpenDataMgmt,
+  restoreScrollAfterLayout,
+  useCardLayout = false,
+  setUseCardLayout,
+  isMobile = false,
+  coreFeaturesOpen,
+  onCoreFeaturesOpenChange,
+  optionalFeaturesOpen,
+  onOptionalFeaturesOpenChange,
+  onOpenAccessibility,
+}: SettingsContentProps) {
+  const jumpToDataRef = useRef<(() => void) | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <AppearanceSettings
+        useCardLayout={useCardLayout}
+        setUseCardLayout={setUseCardLayout}
+        isMobile={isMobile}
+        onOpenAccessibility={onOpenAccessibility}
+      />
+      <FeatureToggles
+        enabledModules={enabledModules}
+        enableModule={enableModule}
+        disableModule={disableModule}
+        enableCache={enableCache}
+        onBeforeOpen={onBeforeOpenFeatureCollapsibles}
+        restoreScrollAfterLayout={restoreScrollAfterLayout}
+        jumpToDataRef={jumpToDataRef}
+        coreFeaturesOpen={coreFeaturesOpen}
+        onCoreFeaturesOpenChange={onCoreFeaturesOpenChange}
+        optionalFeaturesOpen={optionalFeaturesOpen}
+        onOptionalFeaturesOpenChange={onOptionalFeaturesOpenChange}
+      />
+      <BackupSettings
+        enabledModules={enabledModules}
+        onChooseBackupFolder={onChooseBackupFolder}
+        onDownloadFullBackup={onDownloadFullBackup}
+        getBackupPasswordRef={getBackupPasswordRef}
+        setBackupPassword={setBackupPassword}
+        onCheckForUpdates={onCheckForUpdates}
+        checkingForUpdate={checkingForUpdate}
+        onApplySettingsFromBackup={onApplySettingsFromBackup}
+        hasBackupFolder={hasBackupFolder}
+        onBeforeOpen={onBeforeOpenDataMgmt}
+        restoreScrollAfterLayout={restoreScrollAfterLayout}
+        jumpToDataRef={jumpToDataRef}
+      />
+    </div>
+  );
+}
