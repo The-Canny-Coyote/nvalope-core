@@ -64,9 +64,7 @@ interface ScanCardProps {
 /** Height to show ~8 line item rows (each row ~2.5rem). */
 export const LINE_ITEMS_VISIBLE_HEIGHT = '20rem';
 
-// ---------------------------------------------------------------------------
-// EnvelopePicker — searchable popover replacing the native <select>
-// ---------------------------------------------------------------------------
+// Searchable envelope picker for receipt line items.
 interface EnvelopePickerProps {
   value: string;
   envelopes: { id: string; name: string }[];
@@ -184,9 +182,6 @@ function EnvelopePicker({ value, envelopes, onSelect, onCreateNew, lineIndex }: 
   );
 }
 
-// ---------------------------------------------------------------------------
-// ScanCard
-// ---------------------------------------------------------------------------
 export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRemoveScan, onAddEnvelope, glossary = {}, isSaving = false }: ScanCardProps) {
   const [showRaw, setShowRaw] = useState(false);
   const [showBudgetDetails, setShowBudgetDetails] = useState(false);
@@ -196,7 +191,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
   const [showRemoveLineItemDialog, setShowRemoveLineItemDialog] = useState(false);
   const [pendingRemoveLineItemIndex, setPendingRemoveLineItemIndex] = useState<number | null>(null);
   const [showRemoveReceiptFromListDialog, setShowRemoveReceiptFromListDialog] = useState(false);
-  // Progressive-disclosure state — initialised from scan data on mount
   const [showLineItems, setShowLineItems] = useState(() => (scan.lineItems ?? []).length > 0);
   const [showTotalsDetail, setShowTotalsDetail] = useState(() => scan.subtotal != null || scan.tax != null);
   const [showAmountPaid, setShowAmountPaid] = useState(() => scan.amountPaid != null);
@@ -299,7 +293,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
   return (
     <li className="relative p-3 bg-card border border-border rounded-lg flex flex-col gap-3">
 
-      {/* 1.4 — Dismiss button top-right */}
       {onRemoveScan && !scan.addedToEnvelope && (
         <button
           type="button"
@@ -326,7 +319,7 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
         </div>
       )}
 
-      {/* Store name — pr-8 keeps text clear of the dismiss button */}
+      {/* Store name: pr-8 keeps text clear of the dismiss button. */}
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted-foreground">Store name</span>
         <input
@@ -364,7 +357,7 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
         </label>
       </div>
 
-      {/* 2.1 — Line items with collapse/expand toggle */}
+      {/* Line items with collapse/expand toggle. */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <button
@@ -461,7 +454,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
                         </span>
                       </label>
                     )}
-                    {/* 3.2 — Searchable envelope picker replaces <select> */}
                     <EnvelopePicker
                       value={pickerValue}
                       envelopes={envelopes}
@@ -513,7 +505,7 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
             )}
           </div>
 
-          {/* 2.3 — Subtotal + tax behind a "Show breakdown" toggle */}
+          {/* Subtotal and tax stay tucked behind the breakdown toggle. */}
           <button
             type="button"
             onClick={() => setShowTotalsDetail((v) => !v)}
@@ -551,7 +543,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
                 </span>
               </label>
 
-              {/* 2.4 — Tax label with tooltip instead of inline paragraph */}
               <label className="flex justify-between items-center gap-2 text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <span>Tax</span>
@@ -590,7 +581,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
             </>
           )}
 
-          {/* Grand total — always visible */}
           <label className="flex justify-between items-center gap-2 font-semibold text-foreground border-t border-border pt-2">
             <span>Grand total <span className="text-xs font-normal text-muted-foreground">(from receipt)</span></span>
             <span className="flex items-center gap-1">
@@ -615,7 +605,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
           </label>
         </div>
 
-        {/* 2.2 — Amount paid: progressive disclosure */}
         {!showAmountPaid ? (
           <button
             type="button"
@@ -735,7 +724,6 @@ export function ScanCard({ scan, hasEnvelopes, envelopes, onUpdate, onSave, onRe
         </pre>
       )}
 
-      {/* Save — primary style */}
       <div className="flex flex-wrap items-center gap-2">
         {onSave && (
           <button

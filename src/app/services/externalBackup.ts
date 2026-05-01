@@ -101,6 +101,10 @@ interface FileSystemFileHandle {
   createWritable(): Promise<FileSystemWritableFileStream>;
 }
 
+interface WindowWithDirectoryPicker extends Window {
+  showDirectoryPicker: (opts?: { mode?: string; startIn?: string }) => Promise<FileSystemDirectoryHandle>;
+}
+
 function saveHandle(handle: FileSystemDirectoryHandle): Promise<void> {
   return new Promise((resolve, reject) => {
     openProtectionDB().then((db) => {
@@ -140,7 +144,7 @@ export async function getBackupFolderHandle(): Promise<FileSystemDirectoryHandle
 export async function requestBackupFolder(): Promise<boolean> {
   if (typeof window === 'undefined' || !('showDirectoryPicker' in window)) return false;
   try {
-    const picker = (window as unknown as { showDirectoryPicker: (opts?: { mode?: string; startIn?: string }) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker;
+    const picker = (window as WindowWithDirectoryPicker).showDirectoryPicker;
     const handle = await picker({ mode: 'readwrite', startIn: 'documents' });
     await saveHandle(handle);
     return true;
@@ -237,13 +241,15 @@ function getSnapshot(getState: () => FullBackupSnapshot | Record<string, unknown
 
 export function hasBackupableData(snapshot: FullBackupSnapshot | Record<string, unknown> | null | undefined): boolean {
   if (!snapshot || typeof snapshot !== 'object') return false;
+  const fullSnapshot = snapshot as FullBackupSnapshot;
+  const record = snapshot as Record<string, unknown>;
   const hasBudget =
-    (snapshot as FullBackupSnapshot).budget != null &&
-    typeof (snapshot as FullBackupSnapshot).budget === 'object';
-  const hasLegacyData = 'data' in snapshot && (snapshot as Record<string, unknown>).data != null;
+    fullSnapshot.budget != null &&
+    typeof fullSnapshot.budget === 'object';
+  const hasLegacyData = record.data != null;
   const hasMultiBudget =
-    Array.isArray((snapshot as FullBackupSnapshot).budgets) &&
-    ((snapshot as FullBackupSnapshot).budgets?.length ?? 0) > 0;
+    Array.isArray(fullSnapshot.budgets) &&
+    (fullSnapshot.budgets?.length ?? 0) > 0;
   return hasBudget || hasLegacyData || hasMultiBudget;
 }
 

@@ -4,11 +4,12 @@ import { useBudget } from '@/app/store/BudgetContext';
 import { useAppStore } from '@/app/store/appStore';
 import { formatMoney } from '@/app/utils/format';
 import { todayISO } from '@/app/utils/date';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/ConfirmDialog';
 import { getAppData, setAppData } from '@/app/services/appDataIdb';
 import { delayedToast } from '@/app/services/delayedToast';
+import { captureBudgetSnapshot, showBudgetSnapshotUndo } from '@/app/utils/budgetUndo';
 import type { Envelope } from '@/app/store/budgetTypes';
 
 function EnvelopeEditForm({
@@ -41,7 +42,7 @@ function EnvelopeEditForm({
   const handleZeroLimitChoice = useCallback(
     (choice: 'delete' | 'keep' | 'cancel') => {
       setShowZeroLimitConfirm(false);
-      if (choice === 'delete' && onDelete) onDelete();
+      if (choice === 'delete' && onDelete) setShowDeleteEnvelopeDialog(true);
       if (choice === 'keep') onSave(name.trim(), 0);
     },
     [name, onDelete, onSave]
@@ -105,9 +106,9 @@ function EnvelopeEditForm({
           <DialogHeader>
             <DialogTitle>Set budget limit to zero?</DialogTitle>
           </DialogHeader>
-          <p id="zero-limit-desc" className="text-sm text-muted-foreground mb-4">
+          <DialogDescription id="zero-limit-desc" className="mb-4">
             A zero limit means this envelope has no spending cap. You can keep it running without a limit, or delete it entirely — deleting will move its transactions to Uncategorized.
-          </p>
+          </DialogDescription>
           <div className="flex flex-col gap-2">
             {onDelete && (
               <Button
@@ -254,6 +255,16 @@ export function SavingsGoalsSection() {
       delayedToast.error('Could not update savings goal. Please try again.');
     }
   };
+
+  const handleDeleteGoal = useCallback(
+    (goalId: string) => {
+      const before = captureBudgetSnapshot(api);
+      api.deleteSavingsGoal(goalId);
+      if (editingGoalId === goalId) setEditingGoalId(null);
+      showBudgetSnapshotUndo(api, 'Savings goal deleted.', before);
+    },
+    [api, editingGoalId]
+  );
 
   return (
     <div className="border-t border-border pt-4">
@@ -474,8 +485,7 @@ export function SavingsGoalsSection() {
             onConfirm={() => {
               if (!deleteGoalTargetId) return;
               try {
-                api.deleteSavingsGoal(deleteGoalTargetId);
-                if (editingGoalId === deleteGoalTargetId) setEditingGoalId(null);
+                handleDeleteGoal(deleteGoalTargetId);
               } catch {
                 delayedToast.error('Could not delete savings goal. Please try again.');
               } finally {
@@ -655,6 +665,16 @@ function EnvelopesExpensesContentInner() {
     }
   };
 
+  const handleDeleteEnvelope = useCallback(
+    (envelopeIdToDelete: string) => {
+      const before = captureBudgetSnapshot(api);
+      api.deleteEnvelope(envelopeIdToDelete);
+      setEditingEnvelopeId(null);
+      showBudgetSnapshotUndo(api, 'Envelope deleted. Transactions and bills were moved to Uncategorized.', before);
+    },
+    [api]
+  );
+
   const hasEnvelopes = envelopes.length > 0;
 
 
@@ -702,7 +722,7 @@ function EnvelopesExpensesContentInner() {
           </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Envelope spending resets at the end of each period so "remaining" is always per-period, not per-year.
+          Envelope spending resets at the end of each period so &quot;remaining&quot; is always per-period, not per-year.
         </p>
         {budgetPeriodMode === 'biweekly' && (
           <div className="mt-3 pt-3 border-t border-border">
@@ -785,9 +805,9 @@ function EnvelopesExpensesContentInner() {
           <DialogHeader>
             <DialogTitle>Switch to monthly periods</DialogTitle>
           </DialogHeader>
-          <p id="switch-monthly-desc" className="text-sm text-muted-foreground mb-4">
+          <DialogDescription id="switch-monthly-desc" className="mb-4">
             You were using {budgetPeriodMode === 'weekly' ? 'weekly' : 'biweekly'} periods. How do you want to handle the change?
-          </p>
+          </DialogDescription>
           <div className="flex flex-col gap-2">
             <Button
               type="button"
@@ -854,8 +874,7 @@ function EnvelopesExpensesContentInner() {
                     }}
                     onCancel={() => setEditingEnvelopeId(null)}
                     onDelete={() => {
-                      api.deleteEnvelope(e.id);
-                      setEditingEnvelopeId(null);
+                      handleDeleteEnvelope(e.id);
                     }}
                   />
                 ) : (
@@ -1036,8 +1055,7 @@ function EnvelopesExpensesContentInner() {
         confirmLabel="Delete envelope"
         onConfirm={() => {
           if (deleteEnvelopeFromListTargetId) {
-            api.deleteEnvelope(deleteEnvelopeFromListTargetId);
-            setEditingEnvelopeId(null);
+            handleDeleteEnvelope(deleteEnvelopeFromListTargetId);
           }
         }}
       />

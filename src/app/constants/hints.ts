@@ -6,7 +6,7 @@ export const HINT_LABELS: Record<string, string> = {
   'receipt-intro': 'Receipt scanner intro',
   'receipt-upload': 'Upload image',
   'receipt-camera': 'Take photo',
-  'receipt-glossary': 'Glossary',
+  'receipt-glossary': 'Receipt item dictionary',
   'receipt-totals': 'Subtotal, tax, total',
   'receipt-save': 'Save receipt',
   'receipt-add-envelope': 'Add to envelope',

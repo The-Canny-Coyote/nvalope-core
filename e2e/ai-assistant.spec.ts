@@ -25,7 +25,7 @@ test.describe('Cache the Coyote (AI Companion)', () => {
     await openSection(page, 'Settings');
     await expect(page.getByRole('heading', { name: /Settings & Features|^Settings$/i }).first()).toBeVisible({ timeout: 5000 });
     await dismissDialogs(page);
-    await page.getByRole('button', { name: 'Optional features', exact: true }).click();
+    await page.getByRole('button', { name: 'Additional features', exact: true }).click();
     await page.waitForTimeout(300);
     const cacheToggle = page.getByTestId('module-cacheAssistant').getByRole('checkbox', { name: /Cache the Coyote/i });
     if ((await cacheToggle.getAttribute('aria-checked')) === 'false') {
@@ -132,7 +132,7 @@ test.describe('Cache the Coyote (AI Companion)', () => {
 
     await openSection(page, 'Settings');
     await expect(page.getByRole('heading', { name: /Settings & Features|^Settings$/i }).first()).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: 'Optional features', exact: true }).click();
+    await page.getByRole('button', { name: 'Additional features', exact: true }).click();
     await page.waitForTimeout(300);
     const cacheToggle = page.getByTestId('module-cacheAssistant').getByRole('checkbox', { name: /Cache the Coyote/i });
     if ((await cacheToggle.getAttribute('aria-checked')) === 'false') {

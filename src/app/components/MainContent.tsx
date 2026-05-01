@@ -4,15 +4,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, Maximize2, X } from 'lucide-react';
+import { Maximize2, X } from 'lucide-react';
 import { Card } from '@/app/components/ui/card';
 import { WheelMenu } from '@/app/components/WheelMenu';
 import { SimpleListView } from '@/app/components/SimpleListView';
 import { MobileSectionSheet } from '@/app/components/MobileSectionSheet';
-import { FeatureDiscoveryHint } from '@/app/components/FeatureDiscoveryHint';
 import { GridBackground } from '@/app/components/GridBackground';
 import { ThemeToggle } from '@/app/components/ThemeToggle';
-import { StorageUsage } from '@/app/components/StorageUsage';
 import {
   BottomNavBar,
   BOTTOM_NAV_BAR_ROW_HEIGHT_PX,
@@ -23,7 +21,7 @@ import {
   CARD_BAR_MINIMIZED_STRIP_PX,
   clampWheelScale,
 } from '@/app/constants/accessibility';
-import { CACHE_ASSISTANT_SECTION_ID, SETTINGS_SECTION_ID, type AppSection } from '@/app/sections/appSections';
+import { CACHE_ASSISTANT_SECTION_ID, type AppSection } from '@/app/sections/appSections';
 import { motion, AnimatePresence, useScroll, useVelocity, useSpring, useTransform } from 'motion/react';
 import { useAppStore } from '@/app/store/appStore';
 
@@ -35,7 +33,11 @@ const CARD_LAYOUT_BROWN_ORDER = [5, 105, 6];
 function sectionsForCardLayout(sections: AppSection[]): AppSection[] {
   const brown = sections.filter((s) => s.color === BROWN_CARD_COLOR);
   const green = sections.filter((s) => s.color !== BROWN_CARD_COLOR);
-  const brownOrdered = [...CARD_LAYOUT_BROWN_ORDER].filter((id) => brown.some((s) => s.id === id)).map((id) => brown.find((s) => s.id === id)!);
+  const brownById = new Map(brown.map((section) => [section.id, section]));
+  const brownOrdered = CARD_LAYOUT_BROWN_ORDER.flatMap((id) => {
+    const section = brownById.get(id);
+    return section ? [section] : [];
+  });
   return [...green, ...brownOrdered];
 }
 
@@ -69,7 +71,6 @@ export interface MainContentProps {
   showCacheAnimation: boolean;
   setAssistantOpen: (open: boolean) => void;
   useCardLayout: boolean;
-  setUseCardLayout: (v: boolean) => void;
   isMobile: boolean;
 }
 
@@ -87,7 +88,6 @@ export function MainContent({
   showCacheAnimation,
   setAssistantOpen,
   useCardLayout,
-  setUseCardLayout: _setUseCardLayout,
   isMobile,
 }: MainContentProps) {
   const showGridBackground = useAppStore((s) => s.showGridBackground);
@@ -107,41 +107,19 @@ export function MainContent({
   const setCardBarSectionOrder = useAppStore((s) => s.setCardBarSectionOrder);
   const showCardBarRowSelector = useAppStore((s) => s.showCardBarRowSelector);
   const cardsSectionWidthPercent = useAppStore((s) => s.cardsSectionWidthPercent);
-  const storageBarMinimized = useAppStore((s) => s.storageBarMinimized);
-  const setStorageBarMinimized = useAppStore((s) => s.setStorageBarMinimized);
   const listSections = allSections;
   const [narrowViewport, setNarrowViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false
   );
-  // Whether the dock mini-wheel is "blown up" into a front-and-centre overlay.
-  // Only meaningful when a section is already open (i.e. the dock is visible).
-  // Closed by the X button (rendered above the wheel inside the overlay) or by
-  // the Escape key. Clicking a slice inside the overlay changes the section
-  // but keeps the overlay up — matches the user model of "I'm in wheel mode,
-  // let me keep steering from here".
-  //
-  // Lives in the Zustand store (session-only, not persisted) so it survives
-  // transient remounts — notably BudgetProvider flipping back to its loading
-  // state briefly on save retries, which would otherwise snap the overlay
-  // shut on every slice click.
+  // Session-only so the expanded wheel survives transient provider remounts.
   const wheelExpanded = useAppStore((s) => s.wheelExpanded);
   const setWheelExpanded = useAppStore((s) => s.setWheelExpanded);
-  // One-shot hint that tells first-time users where the wheel went when it
-  // collapses into the tiny dock. Persisted so it shows exactly once across
-  // sessions — any of the dismissal paths (manual ✕, click-to-expand, or
-  // the auto-hide timer) flips the flag.
   const wheelDockHintDismissed = useAppStore((s) => s.wheelDockHintDismissed);
   const setWheelDockHintDismissed = useAppStore((s) => s.setWheelDockHintDismissed);
-  // Transient "hint is on screen right now" flag. Lifted to the store
-  // (session-scoped, not persisted) so the BudgetProvider remount cycle
-  // can't reset it mid-show.
   const dockHintVisible = useAppStore((s) => s.wheelDockHintVisible);
   const setDockHintVisible = useAppStore((s) => s.setWheelDockHintVisible);
 
-  // Scroll-linked bob for the sticky dock: as the user scrolls the main
-  // content, the dock gives a small velocity-driven nudge before easing
-  // back to rest. Adds a touch of liveliness without ever leaving the
-  // viewport. Disabled when the user has reduced motion on.
+  // Small velocity-driven nudge for the sticky dock; reduced-motion users get a static dock.
   const { scrollY: mainScrollY } = useScroll({ container: mainScrollRef as React.RefObject<HTMLElement> });
   const rawScrollVelocity = useVelocity(mainScrollY);
   const smoothScrollVelocity = useSpring(rawScrollVelocity, {
@@ -149,25 +127,15 @@ export function MainContent({
     stiffness: 300,
     mass: 0.5,
   });
-  // Clamp: velocity above ~3000 px/s bottoms out at ±14px of visual bob.
   const dockBobY = useTransform(smoothScrollVelocity, [-3000, 0, 3000], [-14, 0, 14], {
     clamp: true,
   });
 
-  // When the overlay closes (or a section closes out from under it) make sure
-  // the wheel collapses back to the dock so the state can't desync.
   useEffect(() => {
     if (selectedWheelSection == null && wheelExpanded) setWheelExpanded(false);
-  }, [selectedWheelSection, wheelExpanded]);
+  }, [selectedWheelSection, wheelExpanded, setWheelExpanded]);
 
-  // Show the first-time dock hint whenever the dock is about to appear and
-  // the user hasn't dismissed it before. Auto-hides after 7s; any other
-  // dismissal path (click-to-expand, manual ✕) both hides the popover AND
-  // flips the persisted flag so we never nag again.
-  // Show the one-time "wheel lives here" hint the first time the dock is
-  // about to appear for a user who hasn't dismissed it yet. All dismissal
-  // paths (click-to-expand, manual ✕, the 7s timer below) both hide the
-  // popover and flip the persisted flag so we never nag again.
+  // One-time "wheel lives here" hint.
   useEffect(() => {
     if (wheelDockHintDismissed) return;
     if (selectedWheelSection == null || wheelExpanded) return;
@@ -179,9 +147,7 @@ export function MainContent({
     return () => window.clearTimeout(t);
   }, [selectedWheelSection, wheelExpanded, wheelDockHintDismissed, setDockHintVisible, setWheelDockHintDismissed]);
 
-  // Global ESC handler while the overlay is open. Kept at the component level
-  // rather than inside the overlay so it catches ESC even when focus has
-  // drifted outside the dialog node (e.g. onto the backdrop).
+  // Catch Escape even if focus has moved outside the expanded wheel.
   useEffect(() => {
     if (!wheelExpanded) return;
     const onKey = (e: KeyboardEvent) => {
@@ -192,7 +158,7 @@ export function MainContent({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [wheelExpanded]);
+  }, [wheelExpanded, setWheelExpanded]);
 
   useEffect(() => {
     const m = window.matchMedia('(max-width: 640px)');
@@ -202,20 +168,12 @@ export function MainContent({
   }, []);
 
   const cardLayoutSections = sectionsForCardLayout(allSections);
-  // Accessibility (id=5) is still a full section (reachable via the wheel, URL
-  // deep-links, and a dedicated shortcut in Settings → Appearance) but it no
-  // longer appears as its own card-bar tab. On mobile the 5th tab was crowding
-  // the bottom nav, and on desktop most users reach Accessibility from
-  // Settings anyway. The filter runs after sectionsForCardLayout so any other
-  // brown/green ordering logic remains unchanged.
+  // Accessibility stays available from Settings and the wheel, but not the card bar.
   const orderedCardBarSections = applyCardBarOrder(
     cardLayoutSections.filter((s) => s.id !== 5),
     cardBarSectionOrder,
   );
-  // Mobile: always one bottom row — scroll horizontally when many sections are
-  // enabled (see BottomNavBar). Desktop "auto" still uses two rows on narrow
-  // viewports; persisted cardBarRows from desktop must not force multi-row on
-  // phone (no row selector on mobile).
+  // Mobile keeps one horizontal bottom row regardless of desktop row preferences.
   const effectiveCardBarRows =
     isMobile && cardBarPosition === 'bottom'
       ? 1
@@ -260,6 +218,7 @@ export function MainContent({
     <motion.div
       ref={sectionContentRef as React.Ref<HTMLDivElement>}
       data-testid="section-content"
+      data-onboarding-target="section-content"
       key={sectionData.id}
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
@@ -418,7 +377,7 @@ export function MainContent({
 
           <div className="mt-4 w-full flex flex-col items-center gap-4">
             {selectedMode === 'focus' ? (
-              <div key="list" data-layout="list">
+              <div key="list" data-layout="list" data-onboarding-target="feature-navigation">
               <SimpleListView
                 sections={listSections}
                 onUserAction={() => {}}
@@ -432,12 +391,7 @@ export function MainContent({
               />
               </div>
             ) : useCardLayout ? (
-              <div key="cards" data-layout="cards" className="flex w-full min-w-0 flex-col items-center">
-                {selectedWheelSection == null && (
-                  <FeatureDiscoveryHint
-                    onOpenSettings={() => setSelectedWheelSection(SETTINGS_SECTION_ID)}
-                  />
-                )}
+              <div key="cards" data-layout="cards" data-onboarding-target="feature-navigation" className="flex w-full min-w-0 flex-col items-center">
                 {!isMobile && (
                   <div className="w-full min-w-0 mt-4">
                     <AnimatePresence mode="wait">
@@ -450,7 +404,7 @@ export function MainContent({
                 )}
               </div>
             ) : (
-              <div key="wheel" data-layout="wheel" className="flex w-full flex-col items-center">
+              <div key="wheel" data-layout="wheel" data-onboarding-target="feature-navigation" className="flex w-full flex-col items-center">
                 {selectedWheelSection == null ? (
                   // Idle: full hero wheel, centered. The wheel's own SVG uses a
                   // tight viewBox (variant="full") so the donut sits at the
@@ -459,17 +413,6 @@ export function MainContent({
                   // (rendered outside the scroll body) takes over navigation
                   // and the content overlay replaces the wheel inline.
                   <>
-                    {/* 1. Optional-features hint sits above the wheel intro so
-                        new users see the "turn more on in Settings" invite
-                        first — the wheel itself is already the obvious focal
-                        point, no need to telegraph it from above. */}
-                    <div className="mt-2 flex w-full flex-col items-center px-4">
-                      <FeatureDiscoveryHint
-                        onOpenSettings={() => setSelectedWheelSection(SETTINGS_SECTION_ID)}
-                      />
-                    </div>
-                    {/* 2. Quiet wheel intro — a plain sentence, no shouty
-                        caps-tracking header. The wheel speaks for itself. */}
                     <p className="mt-3 max-w-md px-4 text-center text-sm text-muted-foreground">
                       Click any slice to open that section. To switch sections later, click the mini-wheel in the corner to expand it again.
                     </p>
@@ -588,37 +531,6 @@ export function MainContent({
           </div>
 
           <div className="w-full mt-8 focus-mode-hide space-y-4">
-            <div className="space-y-4">
-              <div className="relative p-4 sm:p-6 glass-card rounded-2xl flex flex-wrap items-center justify-center gap-2">
-                {storageBarMinimized ? (
-                  <div className="flex items-center justify-center gap-2 w-full">
-                    <span className="text-xs text-muted-foreground">Storage capacity</span>
-                    <button
-                      type="button"
-                      onClick={() => setStorageBarMinimized(false)}
-                      className="inline-flex items-center justify-center p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0"
-                      aria-expanded={false}
-                      aria-label="Expand storage capacity bar"
-                    >
-                      <ChevronDown className="w-4 h-4" aria-hidden />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <StorageUsage />
-                    <button
-                      type="button"
-                      onClick={() => setStorageBarMinimized(true)}
-                      className="absolute top-2 right-2 inline-flex items-center justify-center p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 z-10"
-                      aria-expanded={true}
-                      aria-label="Minimize storage capacity bar"
-                    >
-                      <ChevronUp className="w-4 h-4" aria-hidden />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
             {/* Footer: primary row (legal, support, docs, donate) and secondary
                 (license, source). Trademark notice lives in Terms of Use. */}
             <footer className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground focus-mode-hide" role="contentinfo" aria-label="Footer links">

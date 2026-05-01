@@ -1,7 +1,7 @@
 /**
  * Error boundary for the main app content. Catches render errors in the tree
  * and shows a simple fallback so one failing component does not take down the whole app.
- * Does not log raw errors or user data (Canny Coyote Ethos).
+ * Does not log raw errors or user data.
  */
 
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
@@ -27,7 +27,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
   }
 
   componentDidCatch(_error: Error, _errorInfo: ErrorInfo): void {
-    // Do not log raw errors or user data; ethos-compliant.
+    // Keep sensitive user data out of logs.
   }
 
   handleReload = (): void => {

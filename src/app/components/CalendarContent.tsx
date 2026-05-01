@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/app/components/ui/dialog';
 import { delayedToast } from '@/app/services/delayedToast';
 import { ConfirmDialog } from '@/app/components/ui/ConfirmDialog';
 import { useAppStore } from '@/app/store/appStore';
+import { captureBudgetSnapshot, showBudgetSnapshotUndo } from '@/app/utils/budgetUndo';
 
 function toISO(date: Date): string {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -297,44 +298,24 @@ function CalendarContentInner({ highContrast = false }: CalendarContentProps) {
 
   const handleDeleteIncome = useCallback(
     (incomeEntryId: string) => {
-      const entry = state.income.find((i) => i.id === incomeEntryId);
-      if (!entry) return;
-      delayedToast.successWithUndo(
-        'Income deleted',
-        () => {
-          api.deleteIncome(incomeEntryId);
-          setSelectedDate(null);
-          setEditingIncomeId(null);
-        },
-        () => {
-          api.addIncome({ amount: entry.amount, source: entry.source, date: entry.date });
-        }
-      );
+      if (!state.income.some((i) => i.id === incomeEntryId)) return;
+      const before = captureBudgetSnapshot(api);
+      api.deleteIncome(incomeEntryId);
+      setSelectedDate(null);
+      setEditingIncomeId(null);
+      showBudgetSnapshotUndo(api, 'Income deleted.', before);
     },
     [api, state.income]
   );
 
   const handleDeleteBill = useCallback(
     (billId: string) => {
-      const bill = bills.find((b) => b.id === billId);
-      if (!bill) return;
-      delayedToast.successWithUndo(
-        'Bill deleted',
-        () => {
-          api.deleteBill(billId);
-          setSelectedDate(null);
-          setEditingBillId(null);
-        },
-        () => {
-          api.addBill({
-            name: bill.name,
-            dueDate: bill.dueDate,
-            amount: bill.amount,
-            repeatMonthly: bill.repeatMonthly ?? false,
-            envelopeId: bill.envelopeId,
-          });
-        }
-      );
+      if (!bills.some((b) => b.id === billId)) return;
+      const before = captureBudgetSnapshot(api);
+      api.deleteBill(billId);
+      setSelectedDate(null);
+      setEditingBillId(null);
+      showBudgetSnapshotUndo(api, 'Bill deleted.', before);
     },
     [api, bills]
   );

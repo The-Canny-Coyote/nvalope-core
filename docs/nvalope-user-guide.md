@@ -1,8 +1,8 @@
 # Nvalope User Guide
 
-Nvalope is a budgeting app built around one idea: your financial data belongs to you. Everything stays on your device. Nothing is sent to a server. The app works fully offline after you load it the first time.
+Nvalope is a budgeting app built around one idea: your financial data belongs to you. Your budget data stays on your device and is not sent to a server. The app works fully offline after you load it the first time.
 
-This guide covers everything from getting started to advanced features.
+This guide covers setup, everyday budgeting, additional tools, backups, accessibility, and privacy.
 
 ---
 
@@ -14,7 +14,7 @@ This guide covers everything from getting started to advanced features.
    - [Overview](#overview)
    - [Income](#income)
    - [Envelopes & Expenses](#envelopes--expenses)
-4. [Optional features](#optional-features)
+4. [Additional features](#additional-features)
    - [Transactions](#transactions)
    - [Receipt Scanner](#receipt-scanner)
    - [Calendar View](#calendar-view)
@@ -41,19 +41,21 @@ A typical flow looks like this:
 3. Log expenses as you spend, or import them from your bank.
 4. Check your Overview to see where things stand.
 
-That's it. No accounts to link, no subscriptions, no data leaving your device.
+That's it. No accounts to link, no subscriptions, no budget data leaving your device.
 
 ---
 
 ## How Nvalope is laid out
 
-When you open the app you'll see the **Feature Wheel** — a circular menu where each slice represents a section. Tap a slice to open that section. Tap the centre or press the close button to go back.
+When you open the app you'll start on **Overview**, so you can see your budget status first. The **Feature Wheel** is the circular menu where each slice represents a section. Tap a slice to open that section. Tap the centre or press the close button to go back.
 
-Once you open a section, the wheel collapses to a small **dock** in the top-right corner. The dock is a decorative mini-wheel that rides along with your scroll — it shows you which features exist but is not clickable slice-by-slice. Tap the dock to expand the wheel back into the middle of the screen, then pick a different slice without leaving the current section. Press <kbd>Esc</kbd> or tap the small ✕ above the expanded wheel to collapse it back to the dock. The first time the wheel docks you'll see a one-time hint pointing at it; dismiss it with ✕ (or just click the dock) and it won't come back.
+Once you open a section, the wheel collapses to a small **dock** in the top-right corner. Tap the dock to expand the wheel again, then pick another section without leaving the one you're viewing. Press <kbd>Esc</kbd> or tap the small ✕ above the expanded wheel to collapse it. A one-time hint points out the dock the first time it appears.
 
 If you prefer a more traditional layout, you can switch to **Card Layout** in Settings. In card layout, sections appear as a bar of cards you tap to navigate. You can switch back to the wheel at any time.
 
 The **Settings** button and theme toggle live at the top of the screen. The button to open **Cache the Coyote** (your AI companion, when enabled) appears there too.
+
+On your first visit, Nvalope offers a short guided onboarding tour. You can take the tour, skip it, or return to the app without sharing any data. When the tour ends or is skipped, a small temporary toast points you toward Settings for additional features.
 
 ---
 
@@ -82,6 +84,8 @@ Log money coming in. Each income entry has an amount, a source (Salary, Freelanc
 
 Your five most recent income entries appear below the form. Tap the edit icon on any entry to change the amount, source, or date. Tap the trash icon to delete it.
 
+Before an income entry is deleted, Nvalope asks you to confirm. After deletion, an undo toast appears for a short time so you can restore the entry if you clicked by mistake.
+
 Income entries appear in the Calendar view and contribute to the totals in Overview and Analytics.
 
 ---
@@ -102,11 +106,13 @@ Tapping an envelope opens its detail view, showing recent expenses for that enve
 
 The **Quick Add** button at the top lets you log an expense fast without opening an envelope — just pick the envelope from a dropdown.
 
+Destructive actions such as deleting envelopes, expenses, bills, or savings goals ask for confirmation where needed and show an undo toast after the change when the app can safely restore the previous budget state.
+
 ---
 
-## Optional features
+## Additional features
 
-These are off by default. Turn them on in **Settings → Optional features**.
+These are off by default. Turn them on in **Settings → Additional features**.
 
 ### Transactions
 
@@ -118,6 +124,8 @@ The full history of every expense and income entry, searchable and filterable. Y
 - **Delete** entries you no longer want
 
 When you tap an envelope link in Transactions, it opens the Envelopes view pre-filtered to that envelope. Tapping an entry in the Calendar opens the Transactions view filtered to that date.
+
+Deleting transactions and splitting transactions use the same safety pattern as the rest of the app: confirmation where appropriate and a temporary undo action after the change.
 
 ---
 
@@ -138,7 +146,7 @@ A confidence indicator appears if the scan quality is low — you can correct an
 
 Saved receipts go to **Receipt Archive** (accessible from the wheel or card bar), where you can review them later.
 
-**Glossary support:** If your receipts use store abbreviations or codes for item names (common with grocery stores), tap **Advanced options** to load a JSON glossary file that maps those codes to readable names. A sample glossary is available to download from within the scanner. Once loaded, the active glossary is shown as a chip you can clear without reopening the options panel.
+**Receipt item dictionary support:** If your receipts use store abbreviations or codes for item names (common with grocery stores), tap **Item dictionary options** to load a JSON dictionary file that maps those codes to readable names. A sample receipt item dictionary is available to download from within the scanner. Once loaded, the active dictionary is shown as a chip you can clear without reopening the options panel.
 
 **How the scanner works on your device:** The app uses on-device OCR — no image is ever sent to a server. Category suggestions for your line items use a lightweight AI model that also runs locally in your browser. If that model isn't available, the app falls back to pattern matching. Either way, nothing leaves your device.
 
@@ -185,7 +193,7 @@ Cache reads your current budget data to answer — no data is sent anywhere, and
 
 **Standard** uses a fast, rules-based engine that answers common budget questions reliably and works on any device, fully offline.
 
-**Local AI model** (optional, toggled inside the assistant) downloads a small language model directly to your device. Once downloaded, it runs entirely in your browser. This mode can answer more open-ended questions and follow conversation context better. The download is several hundred megabytes — you'll be prompted before it starts. You can delete the downloaded files at any time from within the assistant.
+**Local AI model** (optional, toggled inside the assistant) downloads a language model directly to your device. Once downloaded, it runs in your browser and can answer more conversational budget questions. The download is several hundred megabytes, and Hugging Face/Xet receives your IP address like any download host. You can delete the downloaded files at any time from within the assistant.
 
 > Note: The local AI model requires a WebGPU-capable browser (recent Chrome or Edge) and a device with at least 4 GB of RAM. If your device doesn't meet these requirements, Standard mode is used automatically.
 
@@ -253,7 +261,7 @@ Settings covers three areas:
 
 **Appearance** — switch between the Feature Wheel and Card Layout.
 
-**Optional features** — turn individual sections on or off. Core sections (Overview, Income, Envelopes, Accessibility) can also be hidden if you don't use them. **Cache the Coyote (AI Companion)** and other advanced features are here too.
+**Additional features** — turn individual sections on or off. Core sections (Overview, Income, Envelopes, Accessibility) can also be hidden if you don't use them. Cache the Coyote and other opt-in tools are here too.
 
 **Data** — split into two collapsible sections for clarity:
 
@@ -266,12 +274,15 @@ Settings covers three areas:
 - **Export budget only (no receipts)** — a smaller file with just your envelopes, transactions, and income; useful for sharing or opening in another tool
 - **Download transactions as CSV** — exports all transactions as a spreadsheet-compatible CSV file you can open in Excel or Google Sheets
 - **Check for updates** — manually check if a newer version is available
-- **Load sample data** — load demo envelopes and transactions to explore features without entering real data
+- **Load sample data** — load demo envelopes and transactions to explore features without entering real data. This replaces your current budget data, so Nvalope asks you to confirm first and recommends making a backup.
+- **Storage usage** — the bottom of this section shows how much browser storage Nvalope is using and how much space is estimated to remain.
 
 **Import data** contains two sub-sections:
 
 - **Restore from backup** — load a Nvalope backup file (.json) to replace your current data. Before replacing, the app shows you what's in the file: the export date and the number of envelopes and transactions, so you can confirm you've got the right file.
 - **Bank statement import** — see [Bank statement import](#bank-statement-import). If you've imported a CSV from the same bank before, you'll see "N saved templates — column mapping remembered" next to the import button.
+
+If you stay idle after interacting with a section, Nvalope may show a small suggestion toast with a sensible next action for that screen. These suggestions are temporary and do not block your work.
 
 ---
 
@@ -317,7 +328,7 @@ Nvalope was designed with privacy as a constraint, not a feature checkbox.
 - **No account required.** You never sign up, log in, or provide an email address.
 - **No tracking.** No analytics, no behaviour monitoring, no advertising.
 - **No server storage.** Your budget data, receipts, and transaction history never leave your device.
-- **Optional features are off by default.** The receipt scanner, Cache the Coyote, and bank import are all opt-in.
+- **Additional features are off by default.** The receipt scanner, Cache the Coyote, and bank import are all opt-in.
 - **Cache the Coyote runs on your device.** When the local model is used, it runs in your browser. When the standard assistant is used, it uses your local data with no network calls.
 - **Backups are yours.** Downloaded backups go to your device. The app never has access to them after you save them.
 

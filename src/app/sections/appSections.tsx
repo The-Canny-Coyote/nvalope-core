@@ -1,5 +1,5 @@
 /**
- * Section definitions for the app (core + optional modules).
+ * Section definitions for the app (core + additional modules).
  * useAppSections() builds the combined list for WheelMenu / SimpleListView.
  */
 
@@ -256,10 +256,6 @@ export function useAppSections(params: UseAppSectionsParams): AppSection[] {
       id: 2,
       icon: DollarSign,
       title: 'Income',
-      // Previously said "allocate funds to your envelopes" which was misleading
-      // — this tab only records inflows; allocation happens implicitly via per-
-      // envelope limits in Envelopes & Expenses. New users were looking for an
-      // allocate action here and couldn't find one.
       description: 'Record paychecks, side income, and any other inflows. Your total income here powers the "Remaining" calculation across envelopes.',
       color: '#2d7a3f',
       content: <SectionWithBoundary label="Income"><IncomeContent /></SectionWithBoundary>,
@@ -483,7 +479,6 @@ export function useAppSections(params: UseAppSectionsParams): AppSection[] {
   ];
 
   return [...coreSections, settingsSection, ...moduleSections];
-  // Intentionally minimal deps to avoid rebuilding sections when card bar / backup setters change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabledModules,

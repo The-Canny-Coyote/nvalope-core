@@ -108,10 +108,14 @@ export interface MultiBudgetBackup {
   budgets: MultiBudgetBackupEntry[];
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 /** Type guard — returns true when raw looks like a multi-budget backup file. */
 export function isMultiBudgetBackup(raw: unknown): raw is MultiBudgetBackup {
-  if (!raw || typeof raw !== 'object') return false;
-  const obj = raw as Record<string, unknown>;
+  if (!isRecord(raw)) return false;
+  const obj = raw;
   return obj.format === 'multi-budget' && Array.isArray(obj.budgets);
 }
 
@@ -127,17 +131,15 @@ export function parseMultiBudgetBackup(raw: unknown): MultiBudgetBackupEntry[] {
   if (raw.budgets.length === 0) {
     throw new Error('This multi-budget backup file contains no budgets.');
   }
-  // Cast to unknown[] for defensive runtime validation — entries may be malformed in user-provided JSON
-  const rawBudgets = raw.budgets as unknown as unknown[];
-  return rawBudgets.map((rawEntry, i) => {
-    if (!rawEntry || typeof rawEntry !== 'object') {
+  return raw.budgets.map((rawEntry: unknown, i) => {
+    if (!isRecord(rawEntry)) {
       throw new Error(`Budget entry ${i + 1} is malformed.`);
     }
-    const e = rawEntry as Record<string, unknown>;
-    if (!e.meta || typeof e.meta !== 'object') {
+    const e = rawEntry;
+    if (!isRecord(e.meta)) {
       throw new Error(`Budget entry ${i + 1} is missing metadata.`);
     }
-    const meta = e.meta as Record<string, unknown>;
+    const meta = e.meta;
     if (typeof meta.id !== 'string' || !meta.id) {
       throw new Error(`Budget entry ${i + 1} has an invalid ID.`);
     }
@@ -163,22 +165,21 @@ export function parseMultiBudgetBackup(raw: unknown): MultiBudgetBackupEntry[] {
  * Uses Zod for exhaustive validation when possible; falls back to manual checks for older runtimes.
  */
 export function parseBudgetBackup(raw: unknown): BudgetState {
-  if (!raw || typeof raw !== 'object') {
+  if (!isRecord(raw)) {
     throw new Error('Invalid backup: not an object.');
   }
-  const obj = raw as Record<string, unknown>;
+  const obj = raw;
   let data: unknown = obj;
-  if ('budget' in obj && obj.budget && typeof obj.budget === 'object') {
-    data = obj.budget as Record<string, unknown>;
-  } else if ('data' in obj && obj.data && typeof obj.data === 'object') {
-    data = obj.data as Record<string, unknown>;
+  if (isRecord(obj.budget)) {
+    data = obj.budget;
+  } else if (isRecord(obj.data)) {
+    data = obj.data;
   }
 
+  const dataRecord = isRecord(data) ? data : {};
   const parsed = budgetStateSchema.safeParse({
-    ...(data as Record<string, unknown>),
-    bills: Array.isArray((data as Record<string, unknown>).bills)
-      ? (data as Record<string, unknown>).bills
-      : [],
+    ...dataRecord,
+    bills: Array.isArray(dataRecord.bills) ? dataRecord.bills : [],
   });
   if (parsed.success) {
     return parsed.data as BudgetState;

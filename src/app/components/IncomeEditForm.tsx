@@ -77,7 +77,7 @@ export function IncomeEditForm({ income, onSave, onCancel, onDelete }: IncomeEdi
       open={showDeleteIncomeEntryDialog}
       onOpenChange={setShowDeleteIncomeEntryDialog}
       title="Delete income entry?"
-      description=""
+      description="This removes the income entry from your budget totals. You will have a short moment to undo."
       confirmLabel="Delete entry"
       onConfirm={() => {
         onDelete?.();

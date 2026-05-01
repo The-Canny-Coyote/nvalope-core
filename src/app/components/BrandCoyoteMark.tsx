@@ -3,7 +3,7 @@
  * announce 🐺 as "wolf"; pair with sr-only text or use {@link BRAND_COYOTE_A11Y} in labels.
  */
 
-export const BRAND_COYOTE_A11Y = "Canny Coyote Labs";
+export const BRAND_COYOTE_A11Y = "The Canny Coyote LLC";
 
 type BrandCoyoteMarkProps = {
   className?: string;

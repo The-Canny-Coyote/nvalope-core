@@ -165,22 +165,18 @@ function WheelMenuComponent({
   };
 
   const handleWedgeBlur = (e: React.FocusEvent<SVGGElement>) => {
-    // Only clear focused state when focus actually leaves the whole wheel —
-    // moving between wedges should keep the label pill visible.
+    // Keep the label visible while focus moves between wedges.
     const related = e.relatedTarget as Node | null;
     if (!related || !svgRef.current?.contains(related)) {
       setFocusedSection(null);
     }
   };
 
-  // Static wedge path — always drawn at baseRadius. "Pop" is applied as a
-  // radial translate on the wrapping <motion.g>, which animates smoothly
-  // unlike SVG path-d interpolation.
+  // Wedge geometry stays fixed; hover/selection "pop" is a group translate.
   const createSectionPath = (index: number) => {
     const startAngle = index * anglePerSection - Math.PI / 2;
     const endAngle = (index + 1) * anglePerSection - Math.PI / 2;
     const radius = baseRadius;
-    // Fixed donut geometry so toggling Cache does not change wedge paths or cause reflow
     const innerRadius = 40;
 
     const x1 = centerX + Math.cos(startAngle) * innerRadius;
@@ -195,8 +191,6 @@ function WheelMenuComponent({
     return `M ${x1},${y1} L ${x4},${y4} A ${radius},${radius} 0 0,1 ${x3},${y3} L ${x2},${y2} A ${innerRadius},${innerRadius} 0 0,0 ${x1},${y1} Z`;
   };
 
-  // Unit-direction vector pointing radially outward through the wedge's
-  // centerline. Used to build the "pop" translate for a given state.
   const getPopDelta = (index: number, lifted: boolean, isSelected: boolean) => {
     const centerAngle = (index + 0.5) * anglePerSection - Math.PI / 2;
     const offset = isSelected ? selectedPop : lifted ? hoverPop : 0;
@@ -217,7 +211,6 @@ function WheelMenuComponent({
 
   const getLabelPosition = (index: number) => {
     const angle = (index + 0.5) * anglePerSection - Math.PI / 2;
-    // Anchor point on the slice (same as icon radius) so label sits over the slice
     const labelAnchorRadius = baseRadius * 0.7;
     const x = centerX + Math.cos(angle) * labelAnchorRadius;
     const y = centerY + Math.sin(angle) * labelAnchorRadius;
@@ -226,22 +219,15 @@ function WheelMenuComponent({
 
   const selectedSectionData = sections.find((s) => s.id === selectedSection);
 
-  // Which section's title should the label pill show? Hover beats focus.
   const labelForId = hoveredSection ?? focusedSection;
   const shouldShowLabelPill = variant === 'full' && labelForId != null;
 
-  // The donut sits at centre (300,300) with radius 180 plus a ~30px selected
-  // pop-out, so the actual drawn content only occupies y ≈ [90,510] out of a
-  // 600×600 canvas. The full variant uses a tight viewBox that trims the empty
-  // vertical margins so the wheel sits where it looks like it sits — no CSS
-  // crop hacks needed, and popped wedges/labels can never get clipped. The
-  // dock variant keeps the square viewBox so the minimap reads as a circle in
-  // its chip.
+  // Full viewBox trims empty vertical space; dock viewBox stays square for the minimap chip.
   const viewBox = variant === 'dock' ? '0 0 600 600' : '0 80 600 440';
 
   return (
     <div className="flex w-full max-w-full min-w-0 flex-col items-center gap-0">
-      {/* SVG Wheel — responsive so narrow viewports don’t overflow horizontally */}
+      {/* Responsive SVG wheel. */}
       <svg
         ref={svgRef}
         viewBox={viewBox}
@@ -250,9 +236,7 @@ function WheelMenuComponent({
         role="radiogroup"
         aria-label="App sections"
       >
-        {/* Wedges. The wheel no longer rotates on select — each slice just
-            "pops" outward along its own radial direction. Selected pops
-            more than hover, so you can always tell which is which. */}
+        {/* Wedges render selected last so its pop-out stays on top. */}
         {[
           ...sections.filter((s) => s.id !== selectedSection),
           ...(selectedSection != null ? sections.filter((s) => s.id === selectedSection) : []),

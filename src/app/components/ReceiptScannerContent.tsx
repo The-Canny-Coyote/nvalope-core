@@ -6,6 +6,7 @@ import { useReceiptScanner } from '@/app/hooks/useReceiptScanner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { STORAGE_KEYS } from '@/app/constants/storageKeys';
 import { ChevronDown, ChevronUp, HelpCircle, X } from 'lucide-react';
+import { ConfirmDialog } from '@/app/components/ui/ConfirmDialog';
 
 export type { ReceiptLineItem, ReceiptScanResult } from '@/app/components/ScanCard';
 export { ScanCard, ScanCardSkeleton, generateId, LINE_ITEMS_VISIBLE_HEIGHT } from '@/app/components/ScanCard';
@@ -26,19 +27,18 @@ function ReceiptScannerContentInner() {
     handleSaveReceipt,
     handleSaveAll,
     clearGlossary,
+    confirmGlossaryImport,
+    cancelGlossaryImport,
     loadGlossaryFile,
     updateScan,
+    pendingGlossaryImport,
   } = useReceiptScanner();
   const { state, api } = useBudget();
   const hasEnvelopes = state.envelopes.length > 0;
 
-  // 1.1 — help popover (replaces always-visible intro paragraph)
   const [helpOpen, setHelpOpen] = useState(false);
-
-  // 1.2 / 3.4 — glossary options disclosure
   const [showGlossaryOptions, setShowGlossaryOptions] = useState(false);
-
-  // 3.1 — first-use guide, shown once then dismissed to localStorage
+  const [showClearGlossaryDialog, setShowClearGlossaryDialog] = useState(false);
   const [introDismissed, setIntroDismissed] = useState(() =>
     localStorage.getItem(STORAGE_KEYS.RECEIPT_SCANNER_INTRO_SEEN) === 'true'
   );
@@ -52,11 +52,8 @@ function ReceiptScannerContentInner() {
 
   return (
     <div className="space-y-4">
-
-      {/* Header row with title + help icon */}
       <div className="flex items-center gap-2">
         <h3 className="text-lg text-primary">Receipt Scanner</h3>
-        {/* 1.1 — help popover instead of always-visible paragraph */}
         <Popover open={helpOpen} onOpenChange={setHelpOpen}>
           <PopoverTrigger asChild>
             <button
@@ -76,14 +73,13 @@ function ReceiptScannerContentInner() {
             </p>
             <p>
               Results are editable — correct the store name, amounts, and categories before saving.
-              You can also load a glossary (JSON) to translate abbreviated item names (e.g. store
+              You can also load a receipt item dictionary (JSON) to translate abbreviated item names (e.g. store
               codes) into readable descriptions.
             </p>
           </PopoverContent>
         </Popover>
       </div>
 
-      {/* 3.1 — First-use guide (shown once, dismissible) */}
       {!introDismissed && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex flex-col gap-2 text-sm">
           <div className="flex items-start justify-between gap-2">
@@ -125,7 +121,6 @@ function ReceiptScannerContentInner() {
         </div>
       )}
 
-      {/* Upload buttons */}
       <div className="grid grid-cols-2 gap-3">
         <div className="relative">
           <button
@@ -180,7 +175,6 @@ function ReceiptScannerContentInner() {
         />
       </div>
 
-      {/* 1.2 / 3.4 — Glossary in collapsible "Advanced options" with persistent chip */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -190,18 +184,17 @@ function ReceiptScannerContentInner() {
             aria-expanded={showGlossaryOptions}
           >
             {showGlossaryOptions ? <ChevronUp className="w-3 h-3" aria-hidden /> : <ChevronDown className="w-3 h-3" aria-hidden />}
-            <span>Advanced options</span>
+            <span>Item dictionary options</span>
           </button>
-          {/* 3.4 — Persistent glossary chip when loaded */}
           {glossaryCount > 0 && !showGlossaryOptions && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-              Glossary: {glossaryCount} {glossaryCount === 1 ? 'entry' : 'entries'}
+              Dictionary: {glossaryCount} {glossaryCount === 1 ? 'entry' : 'entries'}
               <button
                 type="button"
-                onClick={clearGlossary}
+                onClick={() => setShowClearGlossaryDialog(true)}
                 className="ml-0.5 hover:text-destructive transition-colors focus:outline-none"
-                aria-label="Clear glossary"
-                title="Clear glossary"
+                aria-label="Clear receipt item dictionary"
+                title="Clear receipt item dictionary"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -210,12 +203,12 @@ function ReceiptScannerContentInner() {
         </div>
         {showGlossaryOptions && (
           <div className="flex flex-wrap items-center gap-3 pl-4 text-sm">
-            <span className="text-muted-foreground text-xs">Item name glossary:</span>
+            <span className="text-muted-foreground text-xs">Receipt item dictionary:</span>
             <label className="flex items-center gap-1 cursor-pointer text-primary hover:underline text-xs">
-              <input type="file" accept=".json,application/json" className="sr-only" onChange={loadGlossaryFile} aria-label="Load glossary file" />
+              <input type="file" accept=".json,application/json" className="sr-only" onChange={loadGlossaryFile} aria-label="Load receipt item dictionary file" />
               Load JSON
             </label>
-            <a href="/data/receipt-glossary-sample.json" download className="text-primary hover:underline text-xs">
+            <a href="/data/receipt-item-dictionary-sample.json" download className="text-primary hover:underline text-xs">
               Download sample
             </a>
             {glossaryCount > 0 && (
@@ -223,7 +216,7 @@ function ReceiptScannerContentInner() {
                 <span className="text-muted-foreground text-xs">{glossaryCount} {glossaryCount === 1 ? 'entry' : 'entries'} loaded</span>
                 <button
                   type="button"
-                  onClick={clearGlossary}
+                  onClick={() => setShowClearGlossaryDialog(true)}
                   className="text-xs text-muted-foreground hover:text-destructive transition-colors"
                 >
                   Clear
@@ -233,6 +226,35 @@ function ReceiptScannerContentInner() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showClearGlossaryDialog}
+        onOpenChange={setShowClearGlossaryDialog}
+        title="Clear receipt item dictionary?"
+        description="This removes all saved item-name mappings from this browser. Scanning still works, but abbreviations may be harder to read until you load a dictionary again."
+        confirmLabel="Clear dictionary"
+        onConfirm={() => {
+          void clearGlossary();
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingGlossaryImport != null}
+        onOpenChange={(open) => {
+          if (!open) cancelGlossaryImport();
+        }}
+        title="Update receipt item dictionary?"
+        description={
+          pendingGlossaryImport
+            ? `This will add ${pendingGlossaryImport.addedCount} item-name mapping${pendingGlossaryImport.addedCount === 1 ? '' : 's'} and update ${pendingGlossaryImport.updatedCount} existing mapping${pendingGlossaryImport.updatedCount === 1 ? '' : 's'}.`
+            : undefined
+        }
+        confirmLabel="Update dictionary"
+        variant="default"
+        onConfirm={() => {
+          void confirmGlossaryImport();
+        }}
+      />
 
       {scanning && (
         <div className="space-y-1.5 pt-2" role="status" aria-live="polite" aria-label="Receipt scan in progress">
@@ -248,7 +270,6 @@ function ReceiptScannerContentInner() {
       )}
 
       <div className="pt-4 border-t border-border">
-        {/* 1.3 — Count badge in heading + 3.3 — Save all button */}
         <div className="flex items-center justify-between mb-2 gap-2">
           <h4 className="text-sm font-medium text-foreground">
             Recent scans{scans.length > 0 && <span className="ml-1.5 text-xs font-normal text-muted-foreground">({scans.length})</span>}

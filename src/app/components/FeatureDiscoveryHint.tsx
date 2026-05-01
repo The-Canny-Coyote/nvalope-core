@@ -1,6 +1,6 @@
 /**
  * Dismissable hint shown on the home empty state so new users discover that
- * optional features (Transactions, Receipt Scanner, Calendar, Analytics, AI
+ * additional features (Transactions, Receipt Scanner, Calendar, Analytics, AI
  * Assistant, Glossary) can be turned on in Settings.
  *
  * Persists its dismissed state in localStorage so the hint never comes back
@@ -18,7 +18,7 @@ export interface FeatureDiscoveryHintProps {
 
 /**
  * True when the hint should be hidden for any reason: either the user dismissed
- * it explicitly, or they have already expanded the Optional Features collapsible
+ * it explicitly, or they have already expanded the Additional Features collapsible
  * in Settings (which means they've discovered the menu on their own).
  */
 function readHidden(): boolean {

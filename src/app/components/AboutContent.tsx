@@ -7,7 +7,7 @@ export function AboutContent() {
   return (
     <div className="space-y-4 text-sm text-foreground">
       <p className="leading-relaxed">
-        Nvalope is built by <strong>Canny Coyote Labs</strong> to reflect what we care about: privacy, clarity, and user control.
+        Nvalope is built by <strong>The Canny Coyote LLC</strong> to reflect what we care about: privacy, clarity, and user control.
       </p>
 
       <div className="space-y-2">
@@ -20,7 +20,7 @@ export function AboutContent() {
       </div>
 
       <p className="leading-relaxed">
-        We build Nvalope so your budget stays yours. Optional features stay optional; support (like donations) is voluntary. We’d rather be the careful, adaptable companion in the background than a company that treats you as the product.
+        We build Nvalope so your budget stays yours. Additional features stay opt-in; support (like donations) is voluntary. We’d rather be the careful, adaptable companion in the background than a company that treats you as the product.
       </p>
 
       <p className="text-muted-foreground text-xs leading-relaxed">

@@ -14,6 +14,8 @@ function ReceiptArchiveContentInner() {
   const [loading, setLoading] = useState(true);
   const [showRemoveReceiptArchiveDialog, setShowRemoveReceiptArchiveDialog] = useState(false);
   const [removeReceiptArchiveTargetId, setRemoveReceiptArchiveTargetId] = useState<string | null>(null);
+  const [showRemoveReceiptImageDialog, setShowRemoveReceiptImageDialog] = useState(false);
+  const [removeReceiptImageTargetId, setRemoveReceiptImageTargetId] = useState<string | null>(null);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveSortNewest, setArchiveSortNewest] = useState(true);
 
@@ -35,6 +37,7 @@ function ReceiptArchiveContentInner() {
   }, [loadArchives]);
 
   const removeArchive = (id: string) => {
+    const removed = archives.find((a) => a.id === id);
     setArchives((prev) => prev.filter((a) => a.id !== id));
     getAppData().then((data) => {
       const next = (data.receiptArchives ?? []).filter((a) => a.id !== id);
@@ -43,7 +46,21 @@ function ReceiptArchiveContentInner() {
       );
     });
     if (viewing?.id === id) setViewing(null);
-    delayedToast.success('Receipt removed from archive.');
+    delayedToast.successWithUndo(
+      'Receipt removed from archive.',
+      () => {},
+      () => {
+        if (!removed) return;
+        setArchives((prev) => [removed, ...prev.filter((a) => a.id !== removed.id)]);
+        getAppData().then((data) => {
+          const existing = data.receiptArchives ?? [];
+          setAppData({ ...data, receiptArchives: [removed, ...existing.filter((a) => a.id !== removed.id)] }).catch(() =>
+            delayedToast.error('Could not restore receipt archive.')
+          );
+        });
+      },
+      7000,
+    );
   };
 
   const deleteImageKeepData = (id: string) => {
@@ -165,7 +182,10 @@ function ReceiptArchiveContentInner() {
                   {item.imageData && (
                     <button
                       type="button"
-                      onClick={() => deleteImageKeepData(item.id)}
+                      onClick={() => {
+                        setRemoveReceiptImageTargetId(item.id);
+                        setShowRemoveReceiptImageDialog(true);
+                      }}
                       className="text-sm py-1 px-2 rounded border border-border hover:bg-muted text-foreground flex items-center gap-1"
                       title="Remove image but keep receipt data to save space"
                       aria-label="Remove image, keep data"
@@ -263,6 +283,21 @@ function ReceiptArchiveContentInner() {
         onConfirm={() => {
           if (removeReceiptArchiveTargetId) removeArchive(removeReceiptArchiveTargetId);
           setRemoveReceiptArchiveTargetId(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={showRemoveReceiptImageDialog}
+        onOpenChange={(open) => {
+          setShowRemoveReceiptImageDialog(open);
+          if (!open) setRemoveReceiptImageTargetId(null);
+        }}
+        title="Remove receipt image?"
+        description="The receipt data stays in the archive, but the image will be removed from this browser to save space."
+        confirmLabel="Remove image"
+        onConfirm={() => {
+          if (removeReceiptImageTargetId) deleteImageKeepData(removeReceiptImageTargetId);
+          setRemoveReceiptImageTargetId(null);
         }}
       />
     </div>

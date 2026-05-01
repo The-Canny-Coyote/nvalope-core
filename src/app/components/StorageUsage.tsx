@@ -10,7 +10,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
-export function StorageUsage() {
+export function StorageUsage({ className = "" }: { className?: string }) {
   const [usage, setUsage] = useState<number | null>(null);
   const [quota, setQuota] = useState<number | null>(null);
 
@@ -38,23 +38,30 @@ export function StorageUsage() {
 
   return (
     <div
-      className="flex items-center gap-2 px-2 py-1 rounded text-xs text-muted-foreground bg-card"
+      className={`rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground ${className}`}
       role="status"
       aria-live="polite"
       aria-label={`Storage: ${formatBytes(used)} used of ${formatBytes(total)}`}
     >
-      <span className="font-medium tabular-nums">
-        {formatBytes(used)} used
-      </span>
-      <span aria-hidden>/</span>
-      <span className="tabular-nums">
-        {total > 0 ? formatBytes(total) : "—"} left
-      </span>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium text-foreground">Browser storage</span>
+        <span className="tabular-nums">
+          {formatBytes(used)} used
+          {total > 0 ? ` · ${formatBytes(Math.max(total - used, 0))} left` : ""}
+        </span>
+      </div>
       {total > 0 && (
-        <>
-          <span aria-hidden>·</span>
-          <span className="tabular-nums">{pct}%</span>
-        </>
+        <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+          <div
+            className="h-full rounded-full bg-primary transition-[width]"
+            style={{ width: `${Math.min(100, pct)}%` }}
+          />
+        </div>
+      )}
+      {total > 0 && (
+        <p className="mt-1.5 tabular-nums">
+          {pct}% of this browser&apos;s available site storage is in use.
+        </p>
       )}
     </div>
   );

@@ -18,6 +18,7 @@ import { AccessibilityToggles } from '@/app/components/AccessibilityToggles';
 import { AccessibilityPresets } from '@/app/components/AccessibilityPresets';
 import { useAppStore } from '@/app/store/appStore';
 import { STORAGE_KEYS } from '@/app/constants/storageKeys';
+import { ConfirmDialog } from '@/app/components/ui/ConfirmDialog';
 
 export type { AccessibilityMode } from '@/app/components/accessibilityMode';
 
@@ -116,6 +117,7 @@ export function AccessibilityContent({
 }: AccessibilityContentProps) {
   const [defaultStandardOpen, setDefaultStandardOpen] = useState(false);
   const [defaultPresetModesOpen, setDefaultPresetModesOpen] = useState(false);
+  const [showResetConfirmDialog, setShowResetConfirmDialog] = useState(false);
   const standardOptionsOpen = standardOptionsOpenProp ?? defaultStandardOpen;
   const presetModesOpen = presetModesOpenProp ?? defaultPresetModesOpen;
 
@@ -212,7 +214,7 @@ export function AccessibilityContent({
             </div>
             <button
               type="button"
-              onClick={resetToDefaults}
+              onClick={() => setShowResetConfirmDialog(true)}
               className="shrink-0 rounded-lg bg-destructive px-4 py-2 font-medium text-destructive-foreground hover:bg-destructive/90"
             >
               Reset All
@@ -220,6 +222,15 @@ export function AccessibilityContent({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showResetConfirmDialog}
+        onOpenChange={setShowResetConfirmDialog}
+        title="Reset accessibility settings?"
+        description="This restores text size, spacing, motion, contrast, screen reader mode, color settings, and card/wheel sizing to defaults."
+        confirmLabel="Reset settings"
+        onConfirm={resetToDefaults}
+      />
 
       <Collapsible open={standardOptionsOpen} onOpenChange={handleStandardOptionsOpenChange} className="border-t border-border pt-4">
         <CollapsibleTrigger

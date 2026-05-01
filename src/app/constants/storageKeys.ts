@@ -36,13 +36,17 @@ export const STORAGE_KEYS = {
   RECEIPT_SCANNER_INTRO_SEEN: 'nvalope-receipt-scanner-intro-seen',
   /** Whether the home-screen "more features in Settings" hint has been dismissed */
   FEATURE_DISCOVERY_HINT_DISMISSED: 'nvalope-feature-discovery-hint-dismissed',
+  /** Whether the first-run guided onboarding has been completed, skipped, or otherwise handled */
+  ONBOARDING_STATUS: 'nvalope-onboarding-status',
+  /** Whether the one-time Additional Features toast has been shown after onboarding */
+  ONBOARDING_ADDITIONAL_FEATURES_TOAST_SHOWN: 'nvalope-onboarding-additional-features-toast-shown',
   /** Count of times the app has been opened (a "session" = a fresh page load). Used to gate the BMC toast so brand-new users aren't hit with a support ask on first visit. */
   APP_OPEN_COUNT: 'nvalope-app-open-count',
   /** Whether the BMC toast has been shown at any point in the app's lifetime. Once shown, never re-show automatically (footer link remains). */
   BMC_TOAST_EVER_SHOWN: 'nvalope-bmc-toast-ever-shown',
-  /** Whether the one-time "your data stays on your device" reminder under Optional Features has been dismissed. */
+  /** Whether the one-time "your data stays on your device" reminder under Additional Features has been dismissed. */
   OPTIONAL_FEATURES_SAFE_NOTE_DISMISSED: 'nvalope-optional-features-safe-note-dismissed',
-  /** Whether the user has ever expanded the Optional Features collapsible in Settings (used to auto-hide the discovery hint) */
+  /** Whether the user has ever expanded the Additional Features collapsible in Settings (used to auto-hide the discovery hint) */
   OPTIONAL_FEATURES_OPENED: 'nvalope-optional-features-opened',
   /** Unix timestamp (ms) of the last successful auto-backup write */
   LAST_BACKUP_SUCCESS: 'nvalope-last-backup-success',
@@ -59,6 +63,10 @@ export const SESSION_STORAGE_KEYS = {
   BMC_TOAST_SHOWN: 'nvalope-bmc-toast-shown',
   /** Whether the statement-import "new transactions added" hint has been shown this session */
   STATEMENT_IMPORT_TX_HINT: 'nvalope-statement-import-tx-hint-shown',
+  /** Whether the guided onboarding tour is active in this browser tab */
+  ONBOARDING_TOUR_ACTIVE: 'nvalope-onboarding-tour-active',
+  /** Current guided onboarding step index in this browser tab */
+  ONBOARDING_TOUR_STEP: 'nvalope-onboarding-tour-step',
 } as const;
 
 /**

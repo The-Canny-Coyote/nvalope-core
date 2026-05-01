@@ -210,6 +210,11 @@ export function useReceiptScanner() {
   }, []);
 
   const [glossary, setGlossary] = useState<Record<string, string>>({});
+  const [pendingGlossaryImport, setPendingGlossaryImport] = useState<{
+    next: Record<string, string>;
+    addedCount: number;
+    updatedCount: number;
+  } | null>(null);
 
   useEffect(() => {
     getAppData().then((data) => {
@@ -291,7 +296,7 @@ export function useReceiptScanner() {
           }
         }
 
-        // Learn from user edits: merchant alias and line-item glossary (on-device only)
+        // Learn from user edits: merchant alias and line-item dictionary (on-device only)
         const newAlias: Record<string, string> = {};
         if (scanToUse.parsedMerchant && scanToUse.description.trim() && scanToUse.description.trim() !== scanToUse.parsedMerchant) {
           newAlias[scanToUse.parsedMerchant] = scanToUse.description.trim();
@@ -416,8 +421,31 @@ export function useReceiptScanner() {
       const data = await getAppData();
       await setAppData({ ...data, receiptGlossary: {} });
     } catch {
-      delayedToast.error('Could not clear glossary. Try again.');
+      delayedToast.error('Could not clear receipt item dictionary. Try again.');
     }
+  }, []);
+
+  const saveGlossary = useCallback(async (next: Record<string, string>) => {
+    setGlossary(next);
+    try {
+      const data = await getAppData();
+      await setAppData({ ...data, receiptGlossary: next });
+    } catch {
+      delayedToast.error('Could not save receipt item dictionary. Try again.');
+    }
+  }, []);
+
+  const confirmGlossaryImport = useCallback(async () => {
+    if (!pendingGlossaryImport) return;
+    await saveGlossary(pendingGlossaryImport.next);
+    delayedToast.success(
+      `Receipt item dictionary updated: ${pendingGlossaryImport.addedCount} added, ${pendingGlossaryImport.updatedCount} updated.`
+    );
+    setPendingGlossaryImport(null);
+  }, [pendingGlossaryImport, saveGlossary]);
+
+  const cancelGlossaryImport = useCallback(() => {
+    setPendingGlossaryImport(null);
   }, []);
 
   const loadGlossaryFile = (e: ChangeEvent<HTMLInputElement>) => {
@@ -434,15 +462,24 @@ export function useReceiptScanner() {
             return;
           }
           const next: Record<string, string> = { ...glossary };
+          let addedCount = 0;
+          let updatedCount = 0;
           for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-            if (typeof k === 'string' && typeof v === 'string') next[k] = v;
+            if (typeof k === 'string' && typeof v === 'string') {
+              if (next[k] !== undefined && next[k] !== v) updatedCount += 1;
+              if (next[k] === undefined) addedCount += 1;
+              next[k] = v;
+            }
           }
-          setGlossary(next);
-          try {
-            const data = await getAppData();
-            await setAppData({ ...data, receiptGlossary: next });
-          } catch {
-            delayedToast.error('Could not save glossary. Try again.');
+          if (addedCount === 0 && updatedCount === 0) {
+            delayedToast.info('No new dictionary entries found in that file.');
+            return;
+          }
+          if (Object.keys(glossary).length > 0 || updatedCount > 0) {
+            setPendingGlossaryImport({ next, addedCount, updatedCount });
+          } else {
+            await saveGlossary(next);
+            delayedToast.success(`Receipt item dictionary loaded: ${addedCount} entries added.`);
           }
         } catch {
           // invalid JSON
@@ -459,6 +496,7 @@ export function useReceiptScanner() {
     scanProgress,
     error,
     glossary,
+    pendingGlossaryImport,
     savingScanId,
     fileInputRef,
     cameraInputRef,
@@ -467,6 +505,8 @@ export function useReceiptScanner() {
     handleSaveReceipt,
     handleSaveAll,
     clearGlossary,
+    confirmGlossaryImport,
+    cancelGlossaryImport,
     loadGlossaryFile,
     updateScan,
   };

@@ -134,13 +134,13 @@ export function FeatureToggles({
     <>
       <h3 className="text-lg text-primary">Settings & Features</h3>
       <p className="text-xs text-muted-foreground">
-        Everything in this app today is free forever. Future optional features, when added, will be optional extras.
+        Everything in this app today is free forever. Future additional features, when added, will be opt-in extras.
       </p>
       <nav className="flex flex-wrap items-center gap-2" aria-label="Jump to section">
         <span className="text-xs text-muted-foreground mr-1">Jump to:</span>
         {[
           { id: 'settings-core', label: 'Core features', open: () => handleCoreOpenChange(true) },
-          { id: 'settings-optional', label: 'Optional features', open: () => handleOptionalOpenChange(true) },
+          { id: 'settings-optional', label: 'Additional features', open: () => handleOptionalOpenChange(true) },
           { id: 'settings-data', label: 'Data', open: () => jumpToDataRef.current?.() },
         ].map(({ id, label, open }) => (
           <button
@@ -237,7 +237,7 @@ export function FeatureToggles({
                 <Sparkles className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">Optional features</span>
+                <span className="block text-sm font-semibold text-foreground">Additional features</span>
                 <span className="block text-xs text-muted-foreground">Receipt Scanner, Calendar, AI & more</span>
               </div>
             </div>
@@ -304,7 +304,7 @@ export function FeatureToggles({
               {webLLMEligible ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Download a small language model to your device. Once downloaded it works fully offline — no data leaves your device.
+                    Download a local model for more conversational budget questions. Your budget data stays in this browser.
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Enabling local AI downloads a model from Hugging Face/Xet; they will receive your IP address like any download host.
@@ -355,7 +355,7 @@ export function FeatureToggles({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete downloaded model files?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Do you want to remove the downloaded AI model files from this device to free space (hundreds of MB)? If you turn the LLM back on later you will need to redownload the model.
+                    This removes the local AI model files from this browser to free space. Your budget data and settings stay here. If you turn local AI back on later, the model will download again.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

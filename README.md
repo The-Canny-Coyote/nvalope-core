@@ -50,7 +50,7 @@ Optionally run `npm run test:coverage` to check coverage. Tests are additive and
 
 ## License
 
-This repository contains the MIT-licensed base app. Other separately distributed code, if any, is not part of this repository or this license.
+This repository contains the MIT-licensed public core app. Premium, private, or separately distributed features, services, modules, trademarks, and branding are not part of this repository or this license.
 
 ## Support
 
@@ -62,4 +62,8 @@ Privacy Policy and Terms of Use apply worldwide. In the app: **Settings → Lega
 
 ## Trademark
 
-**Nvalope**, **Canny Coyote Labs**, **Cache**, **Cache the Coyote**, **Cache the Coyote, AI Companion**, and related names and logos are reserved to Canny Coyote Labs and contributors. The MIT License grants rights to the software only; it does not grant rights to use these names, marks, or branding for derivative works or your own products without permission. See in-app Terms of Use for the full trademark section.
+**Nvalope**, **The Canny Coyote LLC**, **Cache**, **Cache the Coyote**, **Cache the Coyote, AI Companion**, and related names and logos are reserved to The Canny Coyote LLC and contributors. The MIT License grants rights to the public core software only; it does not grant rights to premium/private features, services, names, marks, or branding for derivative works or your own products without permission. See in-app Terms of Use for the full trademark section.
+
+## Versioning
+
+Nvalope public core releases use Semantic Versioning. See [docs/versioning.md](docs/versioning.md) for the release checklist, changelog rules, and tag format.

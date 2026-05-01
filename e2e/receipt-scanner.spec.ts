@@ -18,7 +18,7 @@ test('Receipt Scanner section opens and shows upload and recent scans', async ({
   await openSection(page, 'Settings');
   await expect(page.getByTestId('section-content')).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('heading', { name: /Settings & Features/i })).toBeVisible({ timeout: 5000 });
-  await page.getByRole('button', { name: 'Optional features', exact: true }).click();
+  await page.getByRole('button', { name: 'Additional features', exact: true }).click();
   await page.waitForTimeout(300);
   const receiptToggle = page.getByTestId('module-receiptScanner').getByRole('checkbox', { name: /Receipt Scanner/i });
   if (await receiptToggle.getAttribute('aria-checked') === 'false') {
@@ -26,8 +26,6 @@ test('Receipt Scanner section opens and shows upload and recent scans', async ({
     await page.waitForTimeout(200);
   }
 
-  // With Settings still open, the hero wheel is replaced by the dock minimap.
-  // `openSection` handles expanding the overlay and clicking the slice inside.
   await openSection(page, /Receipt Scanner/i);
 
   await expect(page.getByRole('heading', { name: 'Receipt Scanner', level: 2 })).toBeVisible({ timeout: 8000 });
@@ -43,7 +41,7 @@ test('Receipt Scanner shows supported image formats and glossary', async ({ page
   await openSection(page, 'Settings');
   await expect(page.getByTestId('section-content')).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('heading', { name: /Settings & Features/i })).toBeVisible({ timeout: 5000 });
-  await page.getByRole('button', { name: 'Optional features', exact: true }).click();
+  await page.getByRole('button', { name: 'Additional features', exact: true }).click();
   await page.waitForTimeout(300);
   const receiptToggle = page.getByTestId('module-receiptScanner').getByRole('checkbox', { name: /Receipt Scanner/i });
   if (await receiptToggle.getAttribute('aria-checked') === 'false') {

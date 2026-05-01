@@ -7,6 +7,7 @@ import { IncomeEditForm } from '@/app/components/IncomeEditForm';
 import { Button } from '@/app/components/ui/button';
 import { Pencil } from 'lucide-react';
 import { useAppStore } from '@/app/store/appStore';
+import { captureBudgetSnapshot, showBudgetSnapshotUndo } from '@/app/utils/budgetUndo';
 
 
 function IncomeContentInner() {
@@ -49,6 +50,13 @@ function IncomeContentInner() {
     () => getBudgetSummaryForCurrentPeriod(),
     [getBudgetSummaryForCurrentPeriod, state, budgetPeriodMode] // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  const handleDeleteIncome = (incomeId: string) => {
+    const before = captureBudgetSnapshot(api);
+    api.deleteIncome(incomeId);
+    setEditingIncomeId(null);
+    showBudgetSnapshotUndo(api, 'Income entry deleted.', before);
+  };
 
   return (
     <div className="space-y-4">
@@ -129,8 +137,7 @@ function IncomeContentInner() {
                     }}
                     onCancel={() => setEditingIncomeId(null)}
                     onDelete={() => {
-                      api.deleteIncome(entry.id);
-                      setEditingIncomeId(null);
+                      handleDeleteIncome(entry.id);
                     }}
                   />
                 ) : (

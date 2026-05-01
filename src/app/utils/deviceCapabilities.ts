@@ -1,6 +1,6 @@
 /**
  * Detects device performance tier based on available hardware.
- * Helps determine if we can enable "Beefed Up" basic logic (Basic+).
+ * Helps determine whether the local model should be offered.
  */
 
 interface NavigatorDeviceMemory {

@@ -8,6 +8,7 @@ import { delayedToast } from '@/app/services/delayedToast';
 import { ConfirmDialog } from '@/app/components/ui/ConfirmDialog';
 import { inputCls, selectCls } from '@/app/utils/classNames';
 import { SplitTransactionDialog } from '@/app/components/SplitTransactionDialog';
+import { captureBudgetSnapshot, showBudgetSnapshotUndo } from '@/app/utils/budgetUndo';
 
 function TransactionsContentInner() {
   const { state, api } = useBudget();
@@ -343,6 +344,7 @@ function TransactionsContentInner() {
         onConfirm={(splits) => {
           const tx = splitTargetId ? transactions.find((t) => t.id === splitTargetId) : undefined;
           if (!tx) return;
+          const before = captureBudgetSnapshot(api);
           try {
             api.deleteTransaction(tx.id);
             api.addTransactions(
@@ -353,8 +355,9 @@ function TransactionsContentInner() {
                 date: tx.date,
               }))
             );
-            delayedToast.success('Transaction split.');
+            showBudgetSnapshotUndo(api, 'Transaction split.', before);
           } catch {
+            api.importData(before);
             delayedToast.error('Could not split transaction. Please try again.');
           }
         }}

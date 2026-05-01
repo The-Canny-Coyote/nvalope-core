@@ -17,9 +17,6 @@ export function AppearanceSettings({
   isMobile = false,
   onOpenAccessibility,
 }: AppearanceSettingsProps) {
-  // The wheel/cards toggle is desktop-only (mobile is cards-only). The
-  // Accessibility shortcut is rendered on both but is especially important
-  // on mobile where Accessibility no longer lives in the bottom nav.
   const showLayoutToggle = !isMobile && !!setUseCardLayout;
   const showA11yShortcut = !!onOpenAccessibility;
 
@@ -52,7 +49,7 @@ export function AppearanceSettings({
             </p>
             <button
               type="button"
-              onClick={() => setUseCardLayout!(false)}
+              onClick={() => setUseCardLayout?.(false)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Use Feature Wheel
@@ -65,11 +62,11 @@ export function AppearanceSettings({
             </p>
             <button
               type="button"
-              onClick={() => setUseCardLayout!(true)}
+              onClick={() => setUseCardLayout?.(true)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label="Switch to cards (Or not.)"
+              aria-label="Switch to cards"
             >
-              Or not.
+              Use Cards
             </button>
           </div>
         )

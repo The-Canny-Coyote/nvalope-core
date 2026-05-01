@@ -10,6 +10,8 @@ export async function prepareE2EStorageBeforeLoad(page: Page, persistPartial: Re
     const partial = JSON.parse(s as string) as Record<string, unknown>;
     try {
       localStorage.setItem('nvalope-backup-prompt-seen', 'true');
+      localStorage.setItem('nvalope-onboarding-status', 'completed');
+      localStorage.setItem('nvalope-onboarding-additional-features-toast-shown', 'true');
     } catch {
       // ignore
     }
@@ -20,6 +22,8 @@ export async function prepareE2EStorageBeforeLoad(page: Page, persistPartial: Re
     // clear this session key explicitly.
     try {
       sessionStorage.setItem('nvalope-bmc-toast-shown', 'true');
+      sessionStorage.removeItem('nvalope-onboarding-tour-active');
+      sessionStorage.removeItem('nvalope-onboarding-tour-step');
     } catch {
       // ignore
     }
@@ -123,15 +127,11 @@ export async function openSection(page: Page, name: string | RegExp): Promise<vo
     .waitFor({ state: 'visible', timeout: 10_000 })
     .catch(() => {});
 
-  // 1) Wheel layout — idle (hero wheel visible, role=radiogroup with radio wedges).
-  //    Scoped to [data-layout="wheel"] so we don't collide with "Settings" substring
-  //    matches elsewhere on the page (e.g. FeatureDiscoveryHint's "Open Settings"
-  //    button) or the dock's aria-hidden mock wheel.
+  // Idle wheel layout.
   const wheel = page.locator('[data-layout="wheel"]').first();
   if (await wheel.isVisible().catch(() => false)) {
     const radio = wheel.getByRole('radio', { name: nameMatcher }).first();
-    // Wait up to a short window for the radio to render — the <motion.g>
-    // wedges fade in on first mount.
+    // Wedges fade in on first mount.
     const radioVisible = await radio
       .waitFor({ state: 'visible', timeout: 3000 })
       .then(() => true)
@@ -143,9 +143,7 @@ export async function openSection(page: Page, name: string | RegExp): Promise<vo
     }
   }
 
-  // 2) Wheel layout — section already open. Only the dock mini-wheel is
-  //    visible, and that's a decorative mock. Expand it into the overlay
-  //    (role=dialog, aria-label="Feature wheel"), then click the slice there.
+  // When a section is open, use the expanded dock overlay.
   const dockBtn = page.getByRole('button', { name: 'Open feature wheel' }).first();
   if (await dockBtn.isVisible().catch(() => false)) {
     await dockBtn.click();
@@ -154,13 +152,11 @@ export async function openSection(page: Page, name: string | RegExp): Promise<vo
     const radio = overlay.getByRole('radio', { name: nameMatcher }).first();
     await radio.waitFor({ state: 'visible', timeout: 5000 });
     await radio.click({ force: true });
-    // Dismiss the overlay so subsequent assertions target the section content.
     await page.keyboard.press('Escape').catch(() => {});
     await overlay.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     return;
   }
 
-  // 3) Cards layout
   const cards = page.locator('[data-layout="cards"]').first();
   if (await cards.isVisible().catch(() => false)) {
     const btn = cards.getByRole('button', { name: nameMatcher }).first();
@@ -169,7 +165,6 @@ export async function openSection(page: Page, name: string | RegExp): Promise<vo
       return;
     }
   }
-  // 4) Focus-mode list
   const list = page.locator('[data-layout="list"]').first();
   if (await list.isVisible().catch(() => false)) {
     const btn = list.getByRole('button', { name: nameMatcher }).first();

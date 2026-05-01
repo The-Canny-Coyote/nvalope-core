@@ -41,6 +41,8 @@ import {
 } from "@/app/components/ui/alert-dialog";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { LOCAL_LLM_ACCURACY_NOTE } from "@/app/constants/assistantCopy";
+import { ConfirmDialog } from "@/app/components/ui/ConfirmDialog";
+import { delayedToast } from "@/app/services/delayedToast";
 
 const QUICK_QUESTIONS = [
   "How much have I spent?",
@@ -123,6 +125,7 @@ export function AIChatSheet({
   const setAssistantUseLLM = useAppStore((s) => s.setAssistantUseLLM);
   const [webLLMStatus, setWebLLMStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable' | 'error'>('idle');
   const [showDeleteModelDialog, setShowDeleteModelDialog] = useState(false);
+  const [showClearConversationDialog, setShowClearConversationDialog] = useState(false);
   const [webLLMLoadProgress, setWebLLMLoadProgress] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const cancelSendRef = useRef<(() => void) | null>(null);
@@ -361,11 +364,22 @@ export function AIChatSheet({
   };
 
   const handleClearConversation = useCallback(() => {
+    const previous = [...messagesRef.current];
     const next = getDefaultMessages();
     messagesRef.current = next;
     setMessages(next);
     setInput("");
     onMessagesChange?.([]);
+    delayedToast.successWithUndo(
+      'Conversation cleared.',
+      () => {},
+      () => {
+        messagesRef.current = previous;
+        setMessages(previous);
+        onMessagesChangeRef.current?.(previous);
+      },
+      7000,
+    );
   }, [onMessagesChange]);
 
   return (
@@ -378,16 +392,12 @@ export function AIChatSheet({
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <SheetTitle className="m-0">
-                  {performanceTier === "high"
-                    ? "Cache the Coyote, AI Companion — Basic+"
-                    : "Cache the Coyote, AI Companion"}
-                </SheetTitle>
+                <SheetTitle className="m-0">Cache the Coyote, AI Companion</SheetTitle>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={handleClearConversation}
+                  onClick={() => setShowClearConversationDialog(true)}
                   aria-label="Clear conversation"
                   className="h-8 w-8"
                 >
@@ -416,9 +426,9 @@ export function AIChatSheet({
             <div className="px-4 pb-3 border-b border-border">
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium text-foreground">Upgrade to Basic+</span>
+                  <span className="text-sm font-medium text-foreground">Download local AI model</span>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Download a small local AI model (~800 MB) for natural language replies — fully offline, nothing leaves your device.
+                    Adds natural-language replies after a one-time download. Your budget data stays in this browser.
                   </p>
                 </div>
                 <button
@@ -440,7 +450,7 @@ export function AIChatSheet({
                 <div className="min-w-0">
                   <span className="text-sm font-medium text-foreground">Use local LLM model</span>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Regular mode uses built-in replies only: it matches keywords and gives short answers. It cannot hold a long conversation or answer in natural language like the LLM.
+                    Regular mode gives short built-in replies. Local AI can handle more conversational questions.
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Enabling local AI downloads a model from Hugging Face/Xet; they will receive your IP address like any download host.
@@ -471,7 +481,7 @@ export function AIChatSheet({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete downloaded model files?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Do you want to remove the downloaded AI model files from this device to free space (hundreds of MB)? If you turn the LLM back on later—here or in Settings—you will need to redownload the model.
+                  This removes the local AI model files from this browser to free space. Your budget data and chat settings stay here. If you turn local AI back on later, the model will download again.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -480,6 +490,14 @@ export function AIChatSheet({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <ConfirmDialog
+            open={showClearConversationDialog}
+            onOpenChange={setShowClearConversationDialog}
+            title="Clear conversation?"
+            description="This removes the saved chat history from this browser. You will have a short moment to undo."
+            confirmLabel="Clear conversation"
+            onConfirm={handleClearConversation}
+          />
         </SheetHeader>
 
         {fallbackReason && (

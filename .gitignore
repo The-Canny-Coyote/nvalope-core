@@ -27,13 +27,13 @@ temp-app
 docs/*
 !docs/accessibility.md
 !docs/nvalope-user-guide.md
+!docs/versioning.md
 
 # Deploy staging (local use only)
 To Deploy/
 
 # Internal / not for public repo
 instructions.md
-scripts/create-stripe-products.js
 DEPLOY.md
 AGENTS.md
 *.zipfilelist.txt

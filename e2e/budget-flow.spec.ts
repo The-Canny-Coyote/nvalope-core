@@ -19,10 +19,10 @@ test('add envelope then expense then see in Transactions', async ({ page }) => {
   const wheelLayout = page.locator('[data-layout="wheel"]').first();
   await wheelLayout.waitFor({ state: 'visible', timeout: 10000 });
 
-  // Ensure Transactions is enabled (optional module): open Settings → Optional features → enable Transactions → Close
+  // Ensure Transactions is enabled: open Settings → Additional features → enable Transactions → Close
   await openSection(page, 'Settings');
   await expect(page.getByRole('heading', { name: 'Settings & Features' })).toBeVisible({ timeout: 5000 });
-  const optionalTrigger = page.getByRole('button', { name: /Optional features/i }).first();
+  const optionalTrigger = page.getByRole('button', { name: /Additional features/i }).first();
   await optionalTrigger.click();
   await page.waitForTimeout(300);
   const transactionsRow = page.locator('[data-testid="module-transactions"]');

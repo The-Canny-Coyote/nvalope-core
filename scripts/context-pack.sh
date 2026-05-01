@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# context-pack.sh — Generate an Nvalope context snapshot for AI/editor sessions.
-# Produces a snapshot of project state, known issues, architecture rules,
-# and recent activity. Re-run before each AI session.
+# context-pack.sh — generate an Nvalope context snapshot for editor sessions.
 #
 # By default writes to NVALOPE_CONTEXT.generated.md so the hand-curated
 # NVALOPE_CONTEXT.md is never clobbered. Use --overwrite to replace the
@@ -58,20 +56,16 @@ _Last commit: ${LAST_COMMIT}_
 
 ---
 
-## Architecture Rules (non-negotiable)
+## Architecture Rules
 
-| Rule | Detail |
-|------|--------|
-| Budget data | → \`budgetIdb.ts\` only |
-| App prefs | → \`appDataIdb.ts\` only |
-| UI state | → \`appStore.ts\` (Zustand/localStorage) |
-| Period spending | Use \`getBudgetSummaryForCurrentPeriod()\` from BudgetContext. **NEVER** read \`envelope.spent\` in UI |
-| Rounding | \`roundTo2\` canonical: \`src/app/utils/format.ts\` |
-| Dates | \`todayISO()\` canonical: \`src/app/utils/date.ts\` |
-| Allocation | \`allocateTotalProportionally\` canonical: \`src/app/services/receiptAllocation.ts\` |
-| Toasts | Use \`delayedToast\` (not raw sonner), except loading/dismiss pairs |
-| Storage keys | kebab-case: \`nvalope-my-key\` (not camelCase) |
-| Network | Every \`fetch()\` needs justification. No financial data leaves device |
+- Budget data stays in \`budgetIdb.ts\`; app preferences stay in \`appDataIdb.ts\`.
+- UI state belongs in \`appStore.ts\`.
+- Period-aware UI totals must use \`getBudgetSummaryForCurrentPeriod()\`, not raw \`envelope.spent\`.
+- Dates and rounding come from \`src/app/utils/date.ts\` and \`src/app/utils/format.ts\`.
+- Receipt allocation uses \`allocateTotalProportionally\`.
+- User-facing toasts should go through \`delayedToast\`, except paired loading/dismiss flows.
+- Storage keys live in \`src/app/constants/storageKeys.ts\` and use kebab-case.
+- Every network call needs a privacy reason; budget data must not leave the device.
 
 ---
 
@@ -86,41 +80,27 @@ src/app/
     appDataIdb.ts                  — preferences/settings
     delayedToast.ts                — toast utility (use this, not sonner directly)
     receiptAllocation.ts           — allocateTotalProportionally
-    webLLMAssistant.ts             — on-device AI (CONTAINS DEAD CODE — getReceiptCategoryFromWebLLM)
-  contexts/BudgetContext.tsx       — getBudgetSummaryForCurrentPeriod()
+    webLLMAssistant.ts             — on-device AI helper
+  store/BudgetContext.tsx          — getBudgetSummaryForCurrentPeriod()
   utils/
     format.ts                      — roundTo2 (canonical)
     date.ts                        — todayISO() (canonical)
     classNames.ts                  — shared input className helper
-  sections/
-    EnvelopesExpensesContent.tsx   — SavingsGoalsSection defined INSIDE inner (bug)
-    CalendarContent.tsx            — _screenReaderMode accepted but unused
-  components/WheelMenu.tsx         — isCacheEnabled hardcoded false (bug)
+  constants/storageKeys.ts         — storage/session/history key catalog
+  components/
+    EnvelopesExpensesContent.tsx   — envelopes and savings goals
+    WheelMenu.tsx                  — section wheel and expanded dock overlay
 public/_headers                    — CSP lives here (not vite.config.ts)
 \`\`\`
 
 ---
 
-## Known Issues (as of last audit)
+## Audit Focus
 
-### Dead Code
-- \`getReceiptCategoryFromWebLLM\` + \`RECEIPT_CATEGORIES\` in \`webLLMAssistant.ts\` — safe to delete
-
-### Code Quality
-- \`SavingsGoalsSection\` defined INSIDE \`EnvelopesExpensesContentInner\` (line ~314) — re-created on every render; extract to top level
-- \`todayISO()\` defined locally in 5 files instead of importing from \`utils/date.ts\`
-- \`roundTo2\` duplicated in \`receiptAllocation.ts\` — remove the duplicate
-- \`nvalopePWAInstalled\` in App.tsx uses camelCase — rename to \`nvalope-pwa-installed\`
-- \`isCacheEnabled = false\` hardcoded in WheelMenu.tsx — derive from \`!!onOpenAssistant\`
-- \`_screenReaderMode\` prop in CalendarContent.tsx accepted but never used
-- No \`src/app/constants/storageKeys.ts\` — localStorage keys scattered
-
-### Unverified Calculation Bugs
-- \`formatDate\` timezone off-by-one for UTC users (\`new Date('YYYY-MM-DD')\` parses as UTC midnight)
-- Analytics "Spending by Envelope" may show all-time data in monthly mode (\`e.spent\` vs periodSummary)
-- Uncategorized transactions (no envelopeId) invisible in all totals
-- Budget Health % mixes period spending with all-time envelope limits
-- Savings goal % cap: Goals list uses 999, Analytics chart uses 100 — both should be 100
+- Keep budget and preference data local-first.
+- Preserve keyboard and screen-reader access when touching navigation or settings.
+- Keep additional modules discoverable without implying paid tiers in this public core app.
+- Watch for duplicated date/rounding helpers, raw \`fetch()\` calls, and storage keys outside the catalog.
 
 ---
 

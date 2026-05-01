@@ -21,6 +21,7 @@ import { HintProvider } from '@/app/contexts/HintContext';
 import { TactileTouchEffect } from '@/app/components/TactileTouchEffect';
 import { AppErrorBoundary } from '@/app/components/AppErrorBoundary';
 import { MainContent } from '@/app/components/MainContent';
+import { GuidedOnboarding } from '@/app/components/GuidedOnboarding';
 import { usePwaUpdate } from '@/app/hooks/usePwaUpdate';
 import { useAccessibility } from '@/app/hooks/useAccessibility';
 import { useAppBackup } from '@/app/hooks/useAppBackup';
@@ -32,15 +33,17 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppStore, getAppStoreSettingsSnapshot } from '@/app/store/appStore';
 import { useCheckUpdatesToast } from '@/app/hooks/useCheckUpdatesToast';
 import { useBackupFolderReminders } from '@/app/hooks/useBackupFolderReminders';
+import { useIdleActionSuggestion } from '@/app/hooks/useIdleActionSuggestion';
 import { STORAGE_KEYS, SESSION_STORAGE_KEYS, HISTORY_STATE_KEYS } from '@/app/constants/storageKeys';
 
 const BACKUP_DEBOUNCE_MS = 2000;
+const OVERVIEW_SECTION_ID = 1;
 
 export default function App() {
   const [showCacheAnimation, setShowCacheAnimation] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [showBackupFolderPrompt, setShowBackupFolderPrompt] = useState(false);
-  const [selectedWheelSection, setSelectedWheelSection] = useState<number | null>(null);
+  const [selectedWheelSection, setSelectedWheelSection] = useState<number | null>(OVERVIEW_SECTION_ID);
   const hasBackupFolder = useBackupFolderReminders(selectedWheelSection, false);
   const storeCardLayout = useAppStore((s) => s.useCardLayout);
   const cardBarRows = useAppStore((s) => s.cardBarRows);
@@ -62,6 +65,25 @@ export default function App() {
   const setUseCardLayout = useCallback((v: boolean) => {
     setUserLayoutOverride(v);
     useAppStore.getState().setUseCardLayout(v);
+  }, []);
+
+  const showAdditionalFeaturesToast = useCallback(() => {
+    try {
+      if (localStorage.getItem(STORAGE_KEYS.ONBOARDING_ADDITIONAL_FEATURES_TOAST_SHOWN) === 'true') return;
+      localStorage.setItem(STORAGE_KEYS.ONBOARDING_ADDITIONAL_FEATURES_TOAST_SHOWN, 'true');
+    } catch {
+      // Storage may be unavailable; still show the session toast.
+    }
+    toast('Additional features are in Settings.', {
+      id: 'onboarding-additional-features',
+      description: 'Turn on Transactions, Receipt Scanner, Calendar, Analytics, AI, and Glossary when you want them.',
+      duration: 9000,
+      position: 'top-right',
+      action: {
+        label: 'Open Settings',
+        onClick: () => setSelectedWheelSection(SETTINGS_SECTION_ID),
+      },
+    });
   }, []);
 
   const {
@@ -618,6 +640,13 @@ export default function App() {
   }, []);
   const switchToTransactionsSection = useCallback(() => handleWheelSectionChange(4), [handleWheelSectionChange]);
 
+  useIdleActionSuggestion({
+    selectedSectionId: selectedWheelSection,
+    availableSectionIds: allSections.map((section) => section.id),
+    onSelectSection: handleWheelSectionChange,
+    disabled: assistantOpen || notificationOpen || showBackupFolderPrompt,
+  });
+
   return (
     <TransactionFilterProvider onSwitchToTransactions={switchToTransactionsSection}>
     <HintProvider>
@@ -650,7 +679,7 @@ export default function App() {
       </a>
       <TactileTouchEffect active={selectedMode === 'tactile'} />
       <Toaster
-        position={isMobile ? 'top-center' : 'bottom-right'}
+        position="bottom-right"
         richColors
         closeButton
         expand
@@ -701,8 +730,12 @@ export default function App() {
             showCacheAnimation={showCacheAnimation}
             setAssistantOpen={setAssistantOpen}
             useCardLayout={useCardLayout}
-            setUseCardLayout={setUseCardLayout}
             isMobile={isMobile}
+          />
+          <GuidedOnboarding
+            selectedSection={selectedWheelSection}
+            onSelectSection={handleWheelSectionChange}
+            onHandled={showAdditionalFeaturesToast}
           />
         </AppErrorBoundary>
       </BudgetProvider>

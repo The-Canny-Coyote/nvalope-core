@@ -18,6 +18,7 @@ import { delayedToast } from '@/app/services/delayedToast';
 import { SESSION_STORAGE_KEYS } from '@/app/constants/storageKeys';
 import { toast } from 'sonner';
 import { Info } from 'lucide-react';
+import { ConfirmDialog } from '@/app/components/ui/ConfirmDialog';
 
 const MIXED_MERCHANTS = /walmart|target|costco|sam's\s*club|amazon|kmart/i;
 
@@ -86,6 +87,7 @@ export function StatementImportPanel({
   const [importMode, setImportMode] = useState<StatementImportMode>('review');
   const [reviewLayout, setReviewLayout] = useState<'grouped' | 'perRow'>('grouped');
   const [templateBankName, setTemplateBankName] = useState('My bank');
+  const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
 
   const queue = classification.importQueue;
   const queueFingerprint = useMemo(
@@ -106,7 +108,7 @@ export function StatementImportPanel({
         sessionStorage.setItem(SESSION_STORAGE_KEYS.STATEMENT_IMPORT_TX_HINT, '1');
         toast.message('Turn on Transaction history', {
           description:
-            'Imported expenses appear in your budget, but the Transactions list is off by default. Enable it under Settings → Optional features → Transactions.',
+            'Imported expenses appear in your budget, but the Transactions list is off by default. Enable it under Settings → Additional features → Transactions.',
           duration: 12_000,
         });
       }
@@ -162,7 +164,19 @@ export function StatementImportPanel({
     [drafts]
   );
 
-  const handleConfirm = () => {
+  const replaceCount = useMemo(
+    () => drafts.filter((d) => d.duplicateResolution === 'replace' && d.duplicateMatch).length,
+    [drafts]
+  );
+  const readyImportCount = useMemo(
+    () =>
+      drafts.filter(
+        (d) => d.duplicateResolution === 'import' || d.duplicateResolution === 'keep_both' || d.duplicateResolution === 'replace'
+      ).length + classification.incomeToAdd.length,
+    [drafts, classification.incomeToAdd.length]
+  );
+
+  const applyImport = () => {
     const incomeToAdd = classification.incomeToAdd;
 
     if (!willImportAny && incomeToAdd.length === 0) {
@@ -222,6 +236,14 @@ export function StatementImportPanel({
       skippedCreditRows: classification.skippedCreditRows.length,
       invalidRows: classification.invalidRows.length,
     });
+  };
+
+  const handleConfirm = () => {
+    if (replaceCount > 0 || readyImportCount >= 50) {
+      setShowImportConfirmDialog(true);
+      return;
+    }
+    applyImport();
   };
 
   const confirmDisabled = !willImportAny && classification.incomeToAdd.length === 0;
@@ -598,6 +620,19 @@ export function StatementImportPanel({
           Cancel
         </button>
       </div>
+
+      <ConfirmDialog
+        open={showImportConfirmDialog}
+        onOpenChange={setShowImportConfirmDialog}
+        title={replaceCount > 0 ? 'Replace existing transactions?' : 'Import a large statement?'}
+        description={
+          replaceCount > 0
+            ? `This import will replace ${replaceCount} existing transaction${replaceCount === 1 ? '' : 's'} and add ${readyImportCount} entr${readyImportCount === 1 ? 'y' : 'ies'} from this file. Review the preview first; replaced transactions cannot be restored from this screen.`
+            : `This will add ${readyImportCount} entries from this statement. Review the preview first, especially dates and amounts.`
+        }
+        confirmLabel={replaceCount > 0 ? 'Replace and import' : 'Import statement'}
+        onConfirm={applyImport}
+      />
     </div>
   );
 }

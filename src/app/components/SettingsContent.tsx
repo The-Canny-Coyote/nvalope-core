@@ -36,7 +36,7 @@ export interface SettingsContentProps {
   /** Lifted from App: Core features collapsible open state. */
   coreFeaturesOpen?: boolean;
   onCoreFeaturesOpenChange?: (open: boolean) => void;
-  /** Lifted from App: Optional features collapsible open state. */
+  /** Lifted from App: Additional features collapsible open state. */
   optionalFeaturesOpen?: boolean;
   onOptionalFeaturesOpenChange?: (open: boolean) => void;
   /** Navigate to the Accessibility section. Accessibility was removed from the

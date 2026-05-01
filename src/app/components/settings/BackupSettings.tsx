@@ -36,8 +36,10 @@ import {
 } from '@/app/services/statementImport/statementTemplates';
 import type { NormalizeImportedTransactionResult } from '@/app/services/statementImport/types';
 import { StatementImportPanel } from '@/app/components/StatementImportPanel';
+import { StorageUsage } from '@/app/components/StorageUsage';
 import { useAppStore } from '@/app/store/appStore';
 import type { BackupSettingsSnapshot } from '@/app/constants/settings';
+import { captureBudgetSnapshot, showBudgetSnapshotUndo } from '@/app/utils/budgetUndo';
 
 type StatementPreview = {
   fileName: string;
@@ -64,10 +66,6 @@ export interface BackupSettingsProps {
   jumpToDataRef: MutableRefObject<(() => void) | null>;
 }
 
-// ---------------------------------------------------------------------------
-// Small inline help tooltip — keeps each button self-documenting without
-// cluttering the surrounding layout.
-// ---------------------------------------------------------------------------
 function HelpTip({ children }: { children: React.ReactNode }) {
   return (
     <Popover>
@@ -87,7 +85,17 @@ function HelpTip({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Pulls export date + counts from a raw backup object for the import confirm dialog. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseBackupObject(text: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(text);
+  if (!isRecord(parsed)) throw new Error('Backup JSON must be an object.');
+  return parsed;
+}
+
+/** Pulls export date and counts from a raw backup object for the import confirm dialog. */
 function extractImportMeta(raw: Record<string, unknown>): { exportDate?: string; envelopeCount?: number; transactionCount?: number; budgetCount?: number } {
   const exportDate = typeof raw.exportDate === 'string' ? raw.exportDate : undefined;
   if (isMultiBudgetBackup(raw)) {
@@ -96,9 +104,10 @@ function extractImportMeta(raw: Record<string, unknown>): { exportDate?: string;
     const transactionCount = budgets.reduce((sum, b) => sum + (b.state.transactions?.length ?? 0), 0);
     return { exportDate, budgetCount, transactionCount };
   }
-  const data = (raw.data ?? raw.budget ?? raw) as Record<string, unknown>;
-  const envelopeCount = Array.isArray(data.envelopes) ? (data.envelopes as unknown[]).length : undefined;
-  const transactionCount = Array.isArray(data.transactions) ? (data.transactions as unknown[]).length : undefined;
+  const source = raw.data ?? raw.budget ?? raw;
+  const data = isRecord(source) ? source : {};
+  const envelopeCount = Array.isArray(data.envelopes) ? data.envelopes.length : undefined;
+  const transactionCount = Array.isArray(data.transactions) ? data.transactions.length : undefined;
   return { exportDate, envelopeCount, transactionCount };
 }
 
@@ -147,12 +156,9 @@ export function BackupSettings({
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
   const pendingImportRawRef = useRef<Record<string, unknown> | null>(null);
   const [showSampleDataConfirmDialog, setShowSampleDataConfirmDialog] = useState(false);
-  // 3.1 — last backup timestamp (refreshed when backup section opens)
   const [lastBackupTs, setLastBackupTs] = useState<number>(() => getLastBackupSuccessTime());
-  // 3.2 — metadata extracted from the backup file before showing confirm dialog
   const [pendingImportMeta, setPendingImportMeta] = useState<{ exportDate?: string; envelopeCount?: number; transactionCount?: number; budgetCount?: number } | null>(null);
   const [pendingImportIsMultiBudget, setPendingImportIsMultiBudget] = useState(false);
-  // 3.4 — count of saved CSV templates (loaded once on mount)
   const [savedTemplateCount, setSavedTemplateCount] = useState<number>(0);
 
   // jumpToDataRef opens the backup collapsible (backward-compat: callers expect
@@ -190,12 +196,10 @@ export function BackupSettings({
     };
   }, [jumpToDataRef, openDataSection]);
 
-  // 3.1 — refresh last-backup timestamp when the backup section is opened
   useEffect(() => {
     if (backupOpen) setLastBackupTs(getLastBackupSuccessTime());
   }, [backupOpen]);
 
-  // 3.4 — load saved CSV template count once on mount
   useEffect(() => {
     void listStatementTemplates().then((ts) => setSavedTemplateCount(ts.length)).catch(() => {});
   }, []);
@@ -231,7 +235,6 @@ export function BackupSettings({
     delayedToast.success('Backup downloaded.');
   };
 
-  // 3.3 — CSV export of transactions
   const handleExportTransactionsCsv = () => {
     if (!api) {
       delayedToast.error('Budget not ready. Try again.');
@@ -260,7 +263,6 @@ export function BackupSettings({
     delayedToast.success(`Downloaded ${txs.length} transactions as CSV.`);
   };
 
-  // ── Apply a multi-budget import (replaces all local budgets) ───────────────
   const applyMultiBudgetImport = async (raw: Record<string, unknown>, toastId: string) => {
     try {
       const entries = parseMultiBudgetBackup(raw);
@@ -389,7 +391,7 @@ export function BackupSettings({
         setImporting(false);
         return;
       }
-      const raw = JSON.parse(text) as Record<string, unknown>;
+      const raw = parseBackupObject(text);
       pendingImportRawRef.current = raw;
       setPendingImportMeta(extractImportMeta(raw));
       setPendingImportIsMultiBudget(isMultiBudgetBackup(raw));
@@ -438,7 +440,7 @@ export function BackupSettings({
             const t = await findTemplateByFingerprint(fp);
             if (t) {
               matchedTemplateName = t.bankName;
-              csvMapping = t.columnMap as unknown as CsvColumnMapping;
+              csvMapping = t.columnMap;
             }
           }
         }
@@ -547,19 +549,17 @@ export function BackupSettings({
       decryptBackupPayload(pendingImportEncryptedContent, password)
         .then((decrypted) => {
           try {
-            const raw = JSON.parse(decrypted) as Record<string, unknown>;
+            const raw = parseBackupObject(decrypted);
             pendingImportRawRef.current = raw;
             setPendingImportMeta(extractImportMeta(raw));
             setShowImportConfirmDialog(true);
-          } catch (parseErr) {
+          } catch {
             toast.dismiss(toastId);
-            void parseErr;
             delayedToast.error('We couldn\'t read that file. Check that it is a valid backup and try again.');
           }
         })
-        .catch((err) => {
+        .catch(() => {
           toast.dismiss(toastId);
-          void err;
           delayedToast.error('That password didn\'t work, or the backup file may be damaged. Try again or use a different backup.');
         })
         .finally(() => {
@@ -622,7 +622,6 @@ export function BackupSettings({
 
           <CollapsibleContent className="space-y-3 pt-3">
 
-            {/* 2.1 — At-a-glance backup status */}
             <div className="flex flex-wrap gap-2 text-xs">
               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border ${
                 hasBackupFolder === true
@@ -640,7 +639,6 @@ export function BackupSettings({
                 <Lock className="w-3 h-3" aria-hidden />
                 {encryptBackups ? 'Encryption: on' : 'Encryption: off'}
               </span>
-              {/* 3.1 — last backup timestamp */}
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border bg-muted/50 border-border text-muted-foreground">
                 {lastBackupTs > 0
                   ? `Last backed up: ${formatLastBackupTime(lastBackupTs)}`
@@ -690,7 +688,6 @@ export function BackupSettings({
                   </HelpTip>
                 </label>
               </div>
-              {/* 2.3 — progressive encryption setup: prompt card when no password set yet */}
               {encryptBackups && setBackupPassword && (
                 <div className={`flex flex-wrap items-center gap-2 ${!getBackupPasswordRef?.current ? 'rounded-lg border border-amber-500/40 bg-amber-500/5 p-2' : ''}`}>
                   {!getBackupPasswordRef?.current && (
@@ -779,7 +776,6 @@ export function BackupSettings({
               </HelpTip>
             </div>
 
-            {/* 1.4 — Browser compat note: only shown when folder API is not supported */}
             {!externalSupported && (
               <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/30 p-2">
                 Auto-backup to a folder is not available in this browser (requires Chrome or Edge). Your data is still backed up automatically on this device. Use <strong>Download full backup</strong> to save a copy elsewhere.
@@ -806,16 +802,7 @@ export function BackupSettings({
                   type="button"
                   onClick={() => {
                     if (!api) return;
-                    const existing = api.getState();
-                    const hasData =
-                      (existing.transactions?.length ?? 0) > 0 || (existing.envelopes?.length ?? 0) > 0;
-                    if (hasData) {
-                      setShowSampleDataConfirmDialog(true);
-                      return;
-                    }
-                    const state = getSeedBudgetState();
-                    api.importData(state);
-                    delayedToast.success('Sample data loaded. You can try the assistant and other sections.');
+                    setShowSampleDataConfirmDialog(true);
                   }}
                   disabled={!api}
                   className={`${btnBase} ${btnDisabled}`}
@@ -863,7 +850,6 @@ export function BackupSettings({
 
           <CollapsibleContent className="space-y-3 pt-3">
 
-            {/* 2.4 — Sub-section: Restore from backup */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-foreground">Restore from backup</p>
               <input
@@ -890,7 +876,6 @@ export function BackupSettings({
               </div>
             </div>
 
-            {/* 2.4 — Sub-section: Bank statement import */}
             {showBankStatementImport && (
               <div className="space-y-2 pt-1 border-t border-border">
                 <p className="text-xs font-medium text-foreground">Bank statement import</p>
@@ -915,7 +900,6 @@ export function BackupSettings({
                   <HelpTip>
                     Upload a CSV, PDF, OFX, QFX, or QIF export from your bank. Nvalope reads it on your device, lets you assign each transaction to an envelope, and skips duplicates. CSV or OFX are most reliable.
                   </HelpTip>
-                  {/* 3.4 — column-mapping memory indicator */}
                   {savedTemplateCount > 0 && (
                     <span className="text-xs text-muted-foreground">
                       {savedTemplateCount} saved {savedTemplateCount === 1 ? 'template' : 'templates'} — column mapping remembered
@@ -967,6 +951,11 @@ export function BackupSettings({
 
           </CollapsibleContent>
         </Collapsible>
+
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="text-xs font-medium text-foreground">Storage</p>
+          <StorageUsage />
+        </div>
 
       </div>
 
@@ -1057,13 +1046,14 @@ export function BackupSettings({
         open={showSampleDataConfirmDialog}
         onOpenChange={setShowSampleDataConfirmDialog}
         title="Replace your data with sample data?"
-        description="This will overwrite your current budget. Use this only if you want to start fresh with demo data."
-        confirmLabel="Load sample data"
+        description="This replaces your current local envelopes, transactions, income, bills, and savings goals with demo data. Download a backup first if you want to keep what is here now."
+        confirmLabel="Replace with sample data"
         onConfirm={() => {
           if (!api) return;
+          const before = captureBudgetSnapshot(api);
           const state = getSeedBudgetState();
           api.importData(state);
-          delayedToast.success('Sample data loaded. You can try the assistant and other sections.');
+          showBudgetSnapshotUndo(api, 'Sample data loaded. Your previous local budget was replaced.', before, 10_000);
           setShowSampleDataConfirmDialog(false);
         }}
       />

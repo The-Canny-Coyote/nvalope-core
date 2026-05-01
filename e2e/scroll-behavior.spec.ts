@@ -88,7 +88,7 @@ test('in Focus mode, clicking a list item scrolls the section content into view'
   await expectSectionContentInView(page);
 });
 
-test('opening Optional features collapsible does not move main scroll', async ({ page }) => {
+test('opening Additional features collapsible does not move main scroll', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 500 });
   await openSection(page, 'Settings');
   await expect(page.getByRole('heading', { name: /Settings & Features/i }).first()).toBeVisible({ timeout: 5000 });
@@ -109,7 +109,7 @@ test('opening Optional features collapsible does not move main scroll', async ({
     return;
   }
 
-  const optionalTrigger = page.locator('#settings-optional').getByRole('button', { name: /Optional features/i });
+  const optionalTrigger = page.locator('#settings-optional').getByRole('button', { name: /Additional features/i });
   await optionalTrigger.click();
   await page.waitForTimeout(600);
 
@@ -143,8 +143,8 @@ test('toggling a module in Settings preserves scroll position (no jump to top)',
   // Dismiss any overlay dialog that might block the module switch
   await dismissDialogs(page);
 
-  // Optional features are in a collapsible; expand it first (target the collapsible trigger, not the Jump to button)
-  const optionalTrigger = page.locator('#settings-optional').getByRole('button', { name: /Optional features/i });
+  // Additional features are in a collapsible; expand it first (target the collapsible trigger, not the Jump to button)
+  const optionalTrigger = page.locator('#settings-optional').getByRole('button', { name: /Additional features/i });
   await optionalTrigger.click();
   await page.waitForTimeout(300);
 
@@ -156,8 +156,8 @@ test('toggling a module in Settings preserves scroll position (no jump to top)',
   // When on Settings we keep the section in view (may change scroll); verify we don't jump to top and Settings stays in view
   expect(scrollAfter).toBeGreaterThan(30);
   await expectSectionContentInView(page);
-  // Optional features collapsible should still be open (heading/content visible)
-  await expect(page.locator('#settings-optional').getByRole('button', { name: /Optional features/i })).toHaveAttribute('aria-expanded', 'true');
+  // Additional features collapsible should still be open (heading/content visible)
+  await expect(page.locator('#settings-optional').getByRole('button', { name: /Additional features/i })).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('toggling a core module preserves scroll and keeps Core features collapsible open', async ({ page }) => {

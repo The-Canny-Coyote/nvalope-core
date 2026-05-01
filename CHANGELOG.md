@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No unreleased changes yet.
+
+## [1.2.0] - 2026-05-01
+
 ### Changed
 
 - Feature Wheel: once a section is open, the wheel now collapses to a small,
@@ -22,6 +26,13 @@
   ("App sections") for assistive tech, replacing the previous `role="button"`.
 - Removed the first-run "Try this" pill above the hero wheel — the wheel is
   already the default desktop layout and the prompt was unnecessary.
+- The app now opens to Overview by default, with storage usage moved into the
+  Settings data section.
+- Receipt scanner glossary copy is now "receipt item dictionary" to keep it
+  distinct from the app-wide glossary.
+- The public core legal pages now name The Canny Coyote LLC and clarify that
+  MIT licensing applies only to the public core app, not premium/private or
+  separately distributed features.
 
 ### Fixed
 
@@ -45,6 +56,11 @@
   the legacy `Cache the AI Assistant™` mark is retained on
   `public/terms.html` and `public/license.html` so the trademark claim isn't
   dropped.
+- Destructive budget actions now use clearer confirmation and undo paths,
+  including sample data replacement, transaction splits, record deletion, and
+  receipt archive cleanup.
+- Guided onboarding now persists in-progress tour state across section changes
+  so it does not restart unexpectedly.
 
 ### Docs
 
@@ -54,8 +70,11 @@
   "Back up & restore" / "Import data" collapsibles.
 - Glossary gains a "Cache the Coyote" entry (in addition to the existing
   Feature Wheel / Feature dock entries from the prior release).
+- User guide now documents onboarding, safety prompts/undo, storage usage in
+  Settings, idle suggestions, and receipt item dictionary support.
+- Added a SemVer release policy and tag checklist in `docs/versioning.md`.
 
-## [1.1.0] — 2026-03-31
+## [1.1.0] - 2026-03-31
 
 ### Changed
 
