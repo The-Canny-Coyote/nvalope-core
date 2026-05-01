@@ -680,7 +680,7 @@ export function MainContent({
                 </a>
                 <span aria-hidden="true">·</span>
                 <a
-                  href="https://github.com/the-canny-coyote/nvalope"
+                  href="https://github.com/The-Canny-Coyote/nvalope-core"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
