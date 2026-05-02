@@ -735,7 +735,9 @@ export default function App() {
           <GuidedOnboarding
             selectedSection={selectedWheelSection}
             onSelectSection={handleWheelSectionChange}
-            onHandled={showAdditionalFeaturesToast}
+            onHandled={(status) => {
+              if (status === 'skipped') showAdditionalFeaturesToast();
+            }}
           />
         </AppErrorBoundary>
       </BudgetProvider>

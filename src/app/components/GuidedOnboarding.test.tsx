@@ -44,7 +44,7 @@ describe('GuidedOnboarding', () => {
 
     await user.click(await screen.findByRole('button', { name: /start guided tour/i }));
     expect(screen.getByRole('dialog', { name: /start with the section picker/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /i found income/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^open income$/i }));
     expect(onSelectSection).toHaveBeenCalledWith(2);
@@ -59,10 +59,13 @@ describe('GuidedOnboarding', () => {
       />
     );
 
-    expect(await screen.findByText(/You're in the right section/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /i found income/i }));
+    expect(await screen.findByText(/Income powers the budget/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^open income$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^open envelopes$/i })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: /^open envelopes$/i }));
+    expect(onSelectSection).toHaveBeenCalledWith(3);
 
-    expect(screen.getByText(/Income powers the budget/i)).toBeInTheDocument();
     expect(onHandled).not.toHaveBeenCalled();
   });
 
@@ -96,7 +99,9 @@ describe('GuidedOnboarding', () => {
       />
     );
 
-    expect(await screen.findByRole('button', { name: /i found income/i })).toBeEnabled();
+    expect(await screen.findByText(/Income powers the budget/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /i found income/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
     expect(localStorage.getItem(STORAGE_KEYS.ONBOARDING_STATUS)).not.toBe('skipped');
   });
 
@@ -117,7 +122,8 @@ describe('GuidedOnboarding', () => {
     await user.click(screen.getByRole('button', { name: /show guide/i }));
 
     expect(screen.getByRole('dialog', { name: /start with the section picker/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /i found income/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^open income$/i })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
   });
 
   it('keeps an explicit skip control for ending the active tour', async () => {

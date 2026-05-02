@@ -5,7 +5,7 @@
  * One minimize control collapses the whole bar (selector + tabs) to an expand strip.
  */
 
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { AppSection } from '@/app/sections/appSections';
 import {
   clampCardBarScale,
@@ -96,6 +96,7 @@ function BottomNavBarComponent({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [hoverExpanded, setHoverExpanded] = useState(false);
+  const mobileScrollRef = useRef<HTMLDivElement | null>(null);
   const [viewportHeight, setViewportHeight] = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 900
   );
@@ -237,6 +238,19 @@ function BottomNavBarComponent({
   /** Single scrollable row on phone; tabs keep a minimum width (touch targets). */
   const mobileBottomBar = isMobile && position === 'bottom';
 
+  useEffect(() => {
+    if (!mobileBottomBar || selectedSection == null) return;
+
+    const selectedButton = mobileScrollRef.current?.querySelector<HTMLElement>(
+      `[data-section-id="${selectedSection}"]`
+    );
+    selectedButton?.scrollIntoView({
+      block: 'nearest',
+      inline: 'center',
+      behavior: 'smooth',
+    });
+  }, [mobileBottomBar, selectedSection]);
+
   const renderSectionButton = (section: AppSection, index: number) => {
     const Icon = section.icon;
     const isSelected = selectedSection === section.id;
@@ -266,7 +280,7 @@ function BottomNavBarComponent({
         onDragEnd={canReorder ? handleDragEnd : undefined}
         onClick={() => handleClick(section.id)}
         className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
-          mobileBottomBar ? 'min-w-[4.5rem] shrink-0 max-w-[9rem]' : 'min-w-0'
+          mobileBottomBar ? 'w-20 min-w-20 shrink-0 flex-none' : 'min-w-0'
         } ${
           canReorder ? 'cursor-grab active:cursor-grabbing' : ''
         } ${isDragging ? 'opacity-50' : ''} ${isDropTarget ? 'ring-2 ring-primary ring-inset bg-primary/10' : ''}`}
@@ -497,6 +511,7 @@ function BottomNavBarComponent({
 
   const nav = mobileBottomBar ? (
     <div
+      ref={mobileScrollRef}
       className="w-full min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch]"
       style={{ touchAction: 'pan-x' }}
       role="presentation"

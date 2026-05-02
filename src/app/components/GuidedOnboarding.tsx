@@ -20,73 +20,62 @@ const ACCESSIBILITY_SECTION_ID = 5;
 const TOUR_VIEWPORT_GAP_PX = 12;
 
 type OnboardingStatus = 'started' | 'completed' | 'skipped';
-type TourPanelMode = 'instruction' | 'waiting' | 'confirm';
+type TourPanelMode = 'instruction' | 'waiting' | 'hidden';
 
 interface TourStep {
   id: string;
   title: string;
   body: string;
-  sectionId: number | null;
-  actionLabel: string;
-  doneLabel: string;
+  actionLabel?: string;
+  actionSectionId?: number;
 }
 
 const steps: TourStep[] = [
   {
     id: 'navigation',
     title: 'Start with the section picker',
-    body: 'The wheel or card bar is your map. Open Income first so you can see where money coming in belongs.',
-    sectionId: INCOME_SECTION_ID,
+    body: 'The wheel or card bar is your map for moving through Nvalope. Start by opening Income so you can see where money coming in belongs before you assign it to envelopes.',
     actionLabel: 'Open Income',
-    doneLabel: 'I found Income',
+    actionSectionId: INCOME_SECTION_ID,
   },
   {
     id: 'income',
     title: 'Income powers the budget',
-    body: 'Income is where paychecks, side work, and other inflows go. Once you have opened it, confirm and we will move on.',
-    sectionId: INCOME_SECTION_ID,
-    actionLabel: 'Open Income',
-    doneLabel: 'I understand Income',
+    body: 'Use Income for paychecks, side work, refunds, or any money that increases what you can budget. The totals here feed the rest of the app, so your envelope limits and Overview make more sense after income is recorded.',
+    actionLabel: 'Open Envelopes',
+    actionSectionId: ENVELOPES_SECTION_ID,
   },
   {
     id: 'envelopes',
     title: 'Envelopes organize spending',
-    body: 'Open Envelopes & Expenses. This is where categories, limits, and day-to-day expenses live.',
-    sectionId: ENVELOPES_SECTION_ID,
-    actionLabel: 'Open Envelopes',
-    doneLabel: 'I found Envelopes',
+    body: 'Envelopes & Expenses is where you create spending categories, set limits, and track day-to-day expenses against those limits. Each envelope shows what has been spent and what remains for the current budget period.',
+    actionLabel: 'Open Overview',
+    actionSectionId: OVERVIEW_SECTION_ID,
   },
   {
     id: 'overview',
     title: 'Overview shows the big picture',
-    body: 'Open Overview to see totals, remaining money, and the health of the current budget period.',
-    sectionId: OVERVIEW_SECTION_ID,
-    actionLabel: 'Open Overview',
-    doneLabel: 'I checked Overview',
+    body: 'Overview summarizes the current period: income and budgeted money at the top, then spending and remaining money below. Budget Health shows how quickly spending is using the available plan.',
+    actionLabel: 'Open Accessibility',
+    actionSectionId: ACCESSIBILITY_SECTION_ID,
   },
   {
     id: 'accessibility',
     title: 'Accessibility is built in',
-    body: 'Open Accessibility to see text, motion, contrast, and layout controls you can tune anytime.',
-    sectionId: ACCESSIBILITY_SECTION_ID,
-    actionLabel: 'Open Accessibility',
-    doneLabel: 'I found Accessibility',
+    body: 'Accessibility gives you control over text size, motion, contrast, and layout comfort. These settings are there so the app can fit how you read, navigate, and focus.',
+    actionLabel: 'Open Settings',
+    actionSectionId: SETTINGS_SECTION_ID,
   },
   {
     id: 'settings',
     title: 'Settings holds data and preferences',
-    body: 'Open Settings to find backups, sample data, appearance, and the opt-in feature switches.',
-    sectionId: SETTINGS_SECTION_ID,
-    actionLabel: 'Open Settings',
-    doneLabel: 'I found Settings',
+    body: 'Settings is where you manage preferences, backups, sample data, storage information, appearance, and feature switches. It is also where you can review options that affect how the app behaves on this device.',
+    actionLabel: 'Review additional features',
   },
   {
     id: 'additional-features',
     title: 'Additional features are opt-in',
-    body: 'Transactions, Receipt Scanner, Calendar, Analytics, Cache the Coyote, and Glossary can be turned on in Settings when you want them.',
-    sectionId: SETTINGS_SECTION_ID,
-    actionLabel: 'Open Settings',
-    doneLabel: 'Finish tour',
+    body: 'Additional features stay off until you choose them. Transactions, Receipt Scanner, Calendar, Analytics, Cache the Coyote, and Glossary can be turned on in Settings when they are useful, without changing the core envelope workflow.',
   },
 ];
 
@@ -108,7 +97,7 @@ function writeOnboardingStatus(status: OnboardingStatus): void {
 }
 
 function isTourPanelMode(value: string | null): value is TourPanelMode {
-  return value === 'instruction' || value === 'waiting' || value === 'confirm';
+  return value === 'instruction' || value === 'waiting' || value === 'hidden';
 }
 
 function readSessionTourState(): { active: boolean; stepIndex: number; panelMode: TourPanelMode } {
@@ -159,7 +148,8 @@ export function GuidedOnboarding({
   const [coachInsets, setCoachInsets] = useState({ bottom: 16, left: 12, right: 12 });
   const [coachAnchor, setCoachAnchor] = useState<HTMLElement | null>(null);
   const step = steps[stepIndex];
-  const taskComplete = step.sectionId == null || selectedSection === step.sectionId;
+  const waitingTargetReached = step.actionSectionId != null && selectedSection === step.actionSectionId;
+  const showActionButton = Boolean(step.actionLabel);
   const progressPercent = Math.round(((stepIndex + 1) / steps.length) * 100);
 
   useEffect(() => {
@@ -177,12 +167,6 @@ export function GuidedOnboarding({
   useEffect(() => {
     if (tourActive) writeSessionTourState(true, stepIndex, panelMode);
   }, [panelMode, stepIndex, tourActive]);
-
-  useEffect(() => {
-    if (tourActive && panelMode === 'waiting' && taskComplete) {
-      setPanelMode('confirm');
-    }
-  }, [panelMode, taskComplete, tourActive]);
 
   const finish = useCallback(
     (status: OnboardingStatus) => {
@@ -212,26 +196,31 @@ export function GuidedOnboarding({
   };
 
   const goToStepTarget = () => {
-    if (step.sectionId != null && selectedSection !== step.sectionId) {
-      onSelectSection(step.sectionId);
+    if (step.actionSectionId != null && selectedSection !== step.actionSectionId) {
+      onSelectSection(step.actionSectionId);
       setPanelMode('waiting');
       return;
     }
-    setPanelMode('confirm');
+    advance();
   };
 
-  const advance = () => {
-    if (!taskComplete) return;
+  const advance = useCallback(() => {
     if (stepIndex >= steps.length - 1) {
       finish('completed');
       return;
     }
     setPanelMode('instruction');
     setStepIndex((current) => current + 1);
-  };
+  }, [finish, stepIndex]);
+
+  useEffect(() => {
+    if (tourActive && panelMode === 'waiting' && waitingTargetReached) {
+      advance();
+    }
+  }, [advance, panelMode, tourActive, waitingTargetReached]);
 
   const hidePromptTemporarily = () => {
-    setPanelMode('waiting');
+    setPanelMode(showActionButton ? 'waiting' : 'hidden');
   };
 
   const updateCoachInsets = useCallback(() => {
@@ -286,7 +275,7 @@ export function GuidedOnboarding({
     setCoachAnchor(document.querySelector<HTMLElement>('[data-guided-onboarding-anchor]'));
   }, [tourActive]);
 
-  const coachBar = panelMode === 'waiting' ? (
+  const coachBar = panelMode === 'waiting' || panelMode === 'hidden' ? (
     <div
       className="pointer-events-auto mx-auto flex w-full max-w-[38rem] flex-col gap-3 rounded-2xl border border-primary/20 bg-card/95 p-3 text-left shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between"
       role="status"
@@ -297,7 +286,7 @@ export function GuidedOnboarding({
           Tour step in progress
         </p>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Open the section, then continue when you&apos;re ready.
+          Open the section and the tour will move forward automatically.
         </p>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2">
@@ -305,7 +294,7 @@ export function GuidedOnboarding({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setPanelMode(taskComplete ? 'confirm' : 'instruction')}
+          onClick={() => setPanelMode('instruction')}
         >
           Show guide
         </Button>
@@ -350,28 +339,27 @@ export function GuidedOnboarding({
       <p id="guided-onboarding-description" className="text-sm leading-relaxed text-muted-foreground">
         {step.body}
       </p>
-      {panelMode === 'confirm' && (
-        <p className="mt-2 text-xs font-medium text-primary">
-          You&apos;re in the right section. Continue when you&apos;re ready.
-        </p>
-      )}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={goToStepTarget}>
-          {step.actionLabel}
-        </Button>
-        <Button type="button" onClick={advance} disabled={!taskComplete}>
-          {taskComplete && <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />}
-          {step.doneLabel}
-        </Button>
+        {showActionButton && (
+          <Button type="button" variant="outline" onClick={goToStepTarget}>
+            {step.actionLabel}
+          </Button>
+        )}
+        {!showActionButton && (
+          <Button type="button" onClick={advance}>
+            <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />
+            Finish tour
+          </Button>
+        )}
       </div>
       <div className="mt-3 flex justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={skipTour}>
           Skip tour
         </Button>
       </div>
-      {!taskComplete && (
+      {step.actionSectionId != null && selectedSection !== step.actionSectionId && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Open this section, then continue when you are ready.
+          Open this section and the tour will move to the next guide automatically.
         </p>
       )}
     </div>
@@ -407,7 +395,7 @@ export function GuidedOnboarding({
           <DialogHeader>
             <DialogTitle>Want a guided tour of Nvalope?</DialogTitle>
             <DialogDescription>
-              We can walk through the core features one at a time. You stay in control: each step waits for you to do the task and confirm when you are ready.
+              We can walk through the core features one at a time. You stay in control: open each section when prompted, and the tour moves forward automatically.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

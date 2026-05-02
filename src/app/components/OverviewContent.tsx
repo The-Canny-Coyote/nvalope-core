@@ -1,28 +1,9 @@
 import { useMemo, memo } from 'react';
 import { motion } from 'motion/react';
-import { Check, Circle } from 'lucide-react';
 import { useBudget } from '@/app/store/BudgetContext';
 import { useAppStore } from '@/app/store/appStore';
 import { formatMoney } from '@/app/utils/format';
 
-/** Empty-state checklist row (check vs circle, strike when done). */
-function StarterStep({ done, label }: { done: boolean; label: string }) {
-  return (
-    <li className="flex items-start gap-2 text-left">
-      <span
-        aria-hidden
-        className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full border ${
-          done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40 text-transparent'
-        }`}
-      >
-        {done ? <Check className="size-3" strokeWidth={3} /> : <Circle className="size-2" />}
-      </span>
-      <span className={done ? 'text-muted-foreground line-through' : 'text-foreground'}>
-        {label}
-      </span>
-    </li>
-  );
-}
 const statVariantsWithMotion = {
   hidden: { opacity: 0, y: 16, scale: 0.97 },
   visible: (i: number) => ({
@@ -115,13 +96,7 @@ function OverviewContentInner() {
   const pct = healthDenominator > 0 ? Math.round((totalSpent / healthDenominator) * 100) : 0;
   const isOverBudget = pct > 100;
   const daysLeft = Number.isFinite(daysLeftInPeriod) ? daysLeftInPeriod : 0;
-
   const envelopes = summary.envelopes ?? [];
-  const hasIncome = (Number.isFinite(summary.totalIncome) ? summary.totalIncome : 0) > 0;
-  const hasEnvelopes = envelopes.length > 0;
-  const recentTxCount = Array.isArray(summary.recentTransactions) ? summary.recentTransactions.length : 0;
-  const hasExpense = recentTxCount > 0 || totalSpent > 0;
-  const isEmpty = !hasIncome && !hasEnvelopes;
 
   return (
     <motion.section
@@ -141,30 +116,19 @@ function OverviewContentInner() {
         )}
       </div>
 
-      {isEmpty && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={noMotion ? { duration: 0 } : undefined}
-          className="p-4 rounded-2xl border border-dashed border-primary/30 bg-primary/5"
-        >
-          <p className="text-sm text-muted-foreground mb-2 text-center">Your budget is empty</p>
-          <ol className="space-y-1.5 text-xs max-w-sm mx-auto" aria-label="Getting started steps">
-            <StarterStep done={hasEnvelopes} label="Create your first envelope (e.g. Groceries, Rent)." />
-            <StarterStep done={hasIncome} label="Add income so you can see what's left to spend." />
-            <StarterStep done={hasExpense} label="Log an expense to see it flow through the overview." />
-          </ol>
-        </motion.div>
-      )}
-
       <motion.div
-        className="grid grid-cols-2 gap-3"
+        className="grid grid-cols-2 gap-3 rounded-2xl"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         <StatCard label="Total Income"   value={formatMoney(summary.totalIncome)}   accent index={0} noMotion={noMotion} />
         <StatCard label="Total Budgeted" value={formatMoney(summary.totalBudgeted)} accent index={1} noMotion={noMotion} />
+        <div
+          className="col-span-2 my-1 h-1.5 rounded-full bg-primary/45 shadow-sm"
+          role="separator"
+          aria-label="Divider between planned money and spending results"
+        />
         <StatCard
           label="Total Spent"
           value={formatMoney(totalSpent === 0 ? 0 : -totalSpent)}
