@@ -735,6 +735,7 @@ export default function App() {
           <GuidedOnboarding
             selectedSection={selectedWheelSection}
             onSelectSection={handleWheelSectionChange}
+            isMobile={isMobile}
             onHandled={(status) => {
               if (status === 'skipped') showAdditionalFeaturesToast();
             }}

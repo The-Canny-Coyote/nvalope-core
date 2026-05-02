@@ -134,12 +134,14 @@ export interface GuidedOnboardingProps {
   selectedSection: number | null;
   onSelectSection: (sectionId: number | null) => void;
   onHandled: (status: Exclude<OnboardingStatus, 'started'>) => void;
+  isMobile?: boolean;
 }
 
 export function GuidedOnboarding({
   selectedSection,
   onSelectSection,
   onHandled,
+  isMobile = false,
 }: GuidedOnboardingProps) {
   const [showIntro, setShowIntro] = useState(false);
   const [tourActive, setTourActive] = useState(false);
@@ -253,7 +255,7 @@ export function GuidedOnboarding({
   }, []);
 
   useLayoutEffect(() => {
-    if (!tourActive || coachAnchor) return;
+    if (!tourActive || (!isMobile && coachAnchor)) return;
 
     updateCoachInsets();
     window.addEventListener('resize', updateCoachInsets);
@@ -265,15 +267,19 @@ export function GuidedOnboarding({
       window.removeEventListener('scroll', updateCoachInsets, true);
       window.clearInterval(timer);
     };
-  }, [coachAnchor, tourActive, updateCoachInsets]);
+  }, [coachAnchor, isMobile, tourActive, updateCoachInsets]);
 
   useLayoutEffect(() => {
     if (!tourActive) {
       setCoachAnchor(null);
       return;
     }
+    if (isMobile) {
+      setCoachAnchor(null);
+      return;
+    }
     setCoachAnchor(document.querySelector<HTMLElement>('[data-guided-onboarding-anchor]'));
-  }, [tourActive]);
+  }, [isMobile, tourActive]);
 
   const coachBar = panelMode === 'waiting' || panelMode === 'hidden' ? (
     <div

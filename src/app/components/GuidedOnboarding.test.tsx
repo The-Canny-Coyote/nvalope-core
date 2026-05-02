@@ -126,6 +126,27 @@ describe('GuidedOnboarding', () => {
     expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
   });
 
+  it('uses the fixed coach host on mobile instead of the page anchor', async () => {
+    const user = userEvent.setup();
+    const anchor = document.createElement('div');
+    anchor.setAttribute('data-guided-onboarding-anchor', '');
+    document.body.appendChild(anchor);
+
+    render(
+      <GuidedOnboarding
+        selectedSection={null}
+        onSelectSection={vi.fn()}
+        onHandled={vi.fn()}
+        isMobile
+      />
+    );
+
+    await user.click(await screen.findByRole('button', { name: /start guided tour/i }));
+
+    const coachDialog = screen.getByRole('dialog', { name: /start with the section picker/i });
+    expect(anchor).not.toContainElement(coachDialog);
+  });
+
   it('keeps an explicit skip control for ending the active tour', async () => {
     const user = userEvent.setup();
     const onHandled = vi.fn();
