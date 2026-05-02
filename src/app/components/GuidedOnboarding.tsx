@@ -235,14 +235,16 @@ export function GuidedOnboarding({
     document.querySelectorAll<HTMLElement>('[data-tour-avoid]').forEach((el) => {
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
+      const isFullWidthChrome = rect.width >= window.innerWidth - 4;
+      const isSideChrome = !isFullWidthChrome && rect.height >= window.innerHeight * 0.5;
 
       if (rect.bottom >= window.innerHeight - 2) {
         bottom = Math.max(bottom, window.innerHeight - rect.top + TOUR_VIEWPORT_GAP_PX);
       }
-      if (rect.left <= 2) {
+      if (isSideChrome && rect.left <= 2) {
         left = Math.max(left, rect.right + TOUR_VIEWPORT_GAP_PX);
       }
-      if (rect.right >= window.innerWidth - 2) {
+      if (isSideChrome && rect.right >= window.innerWidth - 2) {
         right = Math.max(right, window.innerWidth - rect.left + TOUR_VIEWPORT_GAP_PX);
       }
     });

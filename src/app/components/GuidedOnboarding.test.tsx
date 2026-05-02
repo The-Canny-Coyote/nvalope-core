@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GuidedOnboarding } from './GuidedOnboarding';
@@ -8,6 +8,10 @@ describe('GuidedOnboarding', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('shows the first-run choice and persists skip', async () => {
@@ -145,6 +149,43 @@ describe('GuidedOnboarding', () => {
 
     const coachDialog = screen.getByRole('dialog', { name: /start with the section picker/i });
     expect(anchor).not.toContainElement(coachDialog);
+  });
+
+  it('keeps mobile coach side margins when avoiding a full-width bottom bar', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(412);
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(915);
+
+    const bottomBar = document.createElement('div');
+    bottomBar.setAttribute('data-tour-avoid', '');
+    document.body.appendChild(bottomBar);
+    vi.spyOn(bottomBar, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 835,
+      top: 835,
+      bottom: 915,
+      left: 0,
+      right: 412,
+      width: 412,
+      height: 80,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const { container } = render(
+      <GuidedOnboarding
+        selectedSection={null}
+        onSelectSection={vi.fn()}
+        onHandled={vi.fn()}
+        isMobile
+      />
+    );
+
+    await user.click(await screen.findByRole('button', { name: /start guided tour/i }));
+
+    const fixedHost = container.querySelector<HTMLElement>('[aria-live="polite"]');
+    expect(fixedHost?.style.left).toBe('12px');
+    expect(fixedHost?.style.right).toBe('12px');
+    expect(fixedHost?.style.bottom).toContain('92px');
   });
 
   it('keeps an explicit skip control for ending the active tour', async () => {
