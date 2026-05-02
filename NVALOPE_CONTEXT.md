@@ -1,6 +1,6 @@
 # Nvalope Context Pack
 _Generated: 2026-05-01T00:00:00Z_
-_Branch: `public-core-snapshot` | Version: `1.2.0`_
+_Branch: `public-core-snapshot` | Version: `1.2.1`_
 
 ## Stack
 - React 18, TypeScript, Vite 6, Tailwind 4, Radix UI.

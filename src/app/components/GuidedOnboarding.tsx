@@ -18,6 +18,7 @@ const ENVELOPES_SECTION_ID = 3;
 const ACCESSIBILITY_SECTION_ID = 5;
 
 type OnboardingStatus = 'started' | 'completed' | 'skipped';
+type TourPanelMode = 'instruction' | 'waiting' | 'confirm';
 
 interface TourStep {
   id: string;
@@ -112,27 +113,35 @@ function writeOnboardingStatus(status: OnboardingStatus): void {
   }
 }
 
-function readSessionTourState(): { active: boolean; stepIndex: number } {
-  if (typeof window === 'undefined') return { active: false, stepIndex: 0 };
+function isTourPanelMode(value: string | null): value is TourPanelMode {
+  return value === 'instruction' || value === 'waiting' || value === 'confirm';
+}
+
+function readSessionTourState(): { active: boolean; stepIndex: number; panelMode: TourPanelMode } {
+  if (typeof window === 'undefined') return { active: false, stepIndex: 0, panelMode: 'instruction' };
   try {
     const active = sessionStorage.getItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_ACTIVE) === 'true';
     const rawStep = Number.parseInt(sessionStorage.getItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_STEP) ?? '0', 10);
     const stepIndex = Number.isFinite(rawStep) ? Math.min(Math.max(rawStep, 0), steps.length - 1) : 0;
-    return { active, stepIndex };
+    const storedMode = sessionStorage.getItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_PANEL_MODE);
+    const panelMode = isTourPanelMode(storedMode) ? storedMode : 'instruction';
+    return { active, stepIndex, panelMode };
   } catch {
-    return { active: false, stepIndex: 0 };
+    return { active: false, stepIndex: 0, panelMode: 'instruction' };
   }
 }
 
-function writeSessionTourState(active: boolean, stepIndex: number): void {
+function writeSessionTourState(active: boolean, stepIndex: number, panelMode: TourPanelMode = 'instruction'): void {
   try {
     if (!active) {
       sessionStorage.removeItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_ACTIVE);
       sessionStorage.removeItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_STEP);
+      sessionStorage.removeItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_PANEL_MODE);
       return;
     }
     sessionStorage.setItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_ACTIVE, 'true');
     sessionStorage.setItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_STEP, String(stepIndex));
+    sessionStorage.setItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_PANEL_MODE, panelMode);
   } catch {
     // Session storage is only used to survive app remounts during the tour.
   }
@@ -152,6 +161,7 @@ export function GuidedOnboarding({
   const [showIntro, setShowIntro] = useState(false);
   const [tourActive, setTourActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [panelMode, setPanelMode] = useState<TourPanelMode>('instruction');
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const step = steps[stepIndex];
   const taskComplete = step.sectionId == null || selectedSection === step.sectionId;
@@ -160,6 +170,7 @@ export function GuidedOnboarding({
     const sessionTour = readSessionTourState();
     if (sessionTour.active) {
       setStepIndex(sessionTour.stepIndex);
+      setPanelMode(sessionTour.panelMode);
       setTourActive(true);
       setShowIntro(false);
       return;
@@ -168,8 +179,14 @@ export function GuidedOnboarding({
   }, []);
 
   useEffect(() => {
-    if (tourActive) writeSessionTourState(true, stepIndex);
-  }, [stepIndex, tourActive]);
+    if (tourActive) writeSessionTourState(true, stepIndex, panelMode);
+  }, [panelMode, stepIndex, tourActive]);
+
+  useEffect(() => {
+    if (tourActive && panelMode === 'waiting' && taskComplete) {
+      setPanelMode('confirm');
+    }
+  }, [panelMode, taskComplete, tourActive]);
 
   const updateTargetRect = useCallback(() => {
     if (!tourActive || !step) {
@@ -204,6 +221,7 @@ export function GuidedOnboarding({
       setShowIntro(false);
       setTourActive(false);
       setStepIndex(0);
+      setPanelMode('instruction');
       onHandled(status);
     },
     [onHandled]
@@ -213,8 +231,9 @@ export function GuidedOnboarding({
     setShowIntro(false);
     setTourActive(true);
     setStepIndex(0);
+    setPanelMode('instruction');
     writeOnboardingStatus('started');
-    writeSessionTourState(true, 0);
+    writeSessionTourState(true, 0, 'instruction');
     onSelectSection(null);
   };
 
@@ -223,7 +242,12 @@ export function GuidedOnboarding({
   };
 
   const goToStepTarget = () => {
-    if (step.sectionId != null) onSelectSection(step.sectionId);
+    if (step.sectionId != null && selectedSection !== step.sectionId) {
+      onSelectSection(step.sectionId);
+      setPanelMode('waiting');
+      return;
+    }
+    setPanelMode('confirm');
   };
 
   const advance = () => {
@@ -232,7 +256,12 @@ export function GuidedOnboarding({
       finish('completed');
       return;
     }
+    setPanelMode('instruction');
     setStepIndex((current) => current + 1);
+  };
+
+  const hidePromptTemporarily = () => {
+    setPanelMode(taskComplete ? 'confirm' : 'waiting');
   };
 
   const panelPosition = useMemo(() => {
@@ -265,7 +294,7 @@ export function GuidedOnboarding({
         </DialogContent>
       </Dialog>
 
-      {tourActive && step && (
+      {tourActive && step && panelMode !== 'waiting' && (
         <div className="fixed inset-0 z-[120] pointer-events-none" aria-live="polite">
           <div className="absolute inset-0 bg-background/25 backdrop-blur-[1px]" />
           {targetRect && (
@@ -296,14 +325,20 @@ export function GuidedOnboarding({
               </div>
               <button
                 type="button"
-                onClick={skipTour}
+                onClick={hidePromptTemporarily}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Skip guided tour"
+                aria-label="Hide guided tour prompt"
+                title="Hide this prompt while you try the task"
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+            {panelMode === 'confirm' && (
+              <p className="mt-2 text-xs font-medium text-primary">
+                Nice, you&apos;re in the right place. Confirm when you&apos;re ready to continue.
+              </p>
+            )}
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" onClick={goToStepTarget}>
                 {step.actionLabel}
@@ -313,9 +348,14 @@ export function GuidedOnboarding({
                 {step.doneLabel}
               </Button>
             </div>
+            <div className="mt-3 flex justify-end">
+              <Button type="button" variant="ghost" size="sm" onClick={skipTour}>
+                Skip tour
+              </Button>
+            </div>
             {!taskComplete && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Open the highlighted area first, then confirm when you are ready.
+                Use the action button or hide this prompt, try the task, and the tour will return when the step is ready.
               </p>
             )}
           </div>

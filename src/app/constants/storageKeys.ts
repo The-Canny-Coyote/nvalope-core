@@ -67,6 +67,8 @@ export const SESSION_STORAGE_KEYS = {
   ONBOARDING_TOUR_ACTIVE: 'nvalope-onboarding-tour-active',
   /** Current guided onboarding step index in this browser tab */
   ONBOARDING_TOUR_STEP: 'nvalope-onboarding-tour-step',
+  /** Current guided onboarding panel display mode in this browser tab */
+  ONBOARDING_TOUR_PANEL_MODE: 'nvalope-onboarding-tour-panel-mode',
 } as const;
 
 /**

@@ -4,6 +4,15 @@
 
 No unreleased changes yet.
 
+## [1.2.1] - 2026-05-01
+
+### Fixed
+
+- Guided onboarding now lets users hide the active prompt while they complete
+  a task, then returns with the confirmation action once the target section is
+  open. The active-tour X no longer accidentally skips the tour; an explicit
+  "Skip tour" control remains available for users who want to end onboarding.
+
 ## [1.2.0] - 2026-05-01
 
 ### Changed
