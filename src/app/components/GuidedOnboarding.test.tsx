@@ -43,11 +43,13 @@ describe('GuidedOnboarding', () => {
     );
 
     await user.click(await screen.findByRole('button', { name: /start guided tour/i }));
+    expect(screen.getByRole('dialog', { name: /start with the section picker/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /i found income/i })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: /^open income$/i }));
     expect(onSelectSection).toHaveBeenCalledWith(2);
     expect(screen.queryByText(/Start with the section picker/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /guided tour step in progress/i })).toBeInTheDocument();
 
     rerender(
       <GuidedOnboarding
@@ -57,7 +59,7 @@ describe('GuidedOnboarding', () => {
       />
     );
 
-    expect(await screen.findByText(/Nice, you're in the right place/i)).toBeInTheDocument();
+    expect(await screen.findByText(/You're in the right section/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /i found income/i }));
 
     expect(screen.getByText(/Income powers the budget/i)).toBeInTheDocument();
@@ -81,6 +83,7 @@ describe('GuidedOnboarding', () => {
     await user.click(screen.getByRole('button', { name: /hide guided tour prompt/i }));
 
     expect(screen.queryByText(/Start with the section picker/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /guided tour step in progress/i })).toBeInTheDocument();
     expect(localStorage.getItem(STORAGE_KEYS.ONBOARDING_STATUS)).toBe('started');
     expect(sessionStorage.getItem(SESSION_STORAGE_KEYS.ONBOARDING_TOUR_PANEL_MODE)).toBe('waiting');
     expect(onHandled).not.toHaveBeenCalled();
@@ -95,6 +98,26 @@ describe('GuidedOnboarding', () => {
 
     expect(await screen.findByRole('button', { name: /i found income/i })).toBeEnabled();
     expect(localStorage.getItem(STORAGE_KEYS.ONBOARDING_STATUS)).not.toBe('skipped');
+  });
+
+  it('lets users reopen the coach bar from the waiting state', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <GuidedOnboarding
+        selectedSection={null}
+        onSelectSection={vi.fn()}
+        onHandled={vi.fn()}
+      />
+    );
+
+    await user.click(await screen.findByRole('button', { name: /start guided tour/i }));
+    await user.click(screen.getByRole('button', { name: /hide guided tour prompt/i }));
+
+    await user.click(screen.getByRole('button', { name: /show guide/i }));
+
+    expect(screen.getByRole('dialog', { name: /start with the section picker/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /i found income/i })).toBeDisabled();
   });
 
   it('keeps an explicit skip control for ending the active tour', async () => {

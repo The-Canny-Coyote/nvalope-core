@@ -595,6 +595,7 @@ function BottomNavBarComponent({
 
   return (
     <div
+      data-tour-avoid
       className={`fixed z-[100] flex min-h-0 max-w-full min-w-0 shrink-0 border-border bg-card shadow-lg ${
         isVertical
           ? 'flex-col overflow-x-hidden overflow-y-hidden'

@@ -373,6 +373,7 @@ export function MainContent({
                   New here? Read the user guide.
                 </a>
               </div>
+              <div data-guided-onboarding-anchor className="mt-4 w-full" />
             </div>
 
           <div className="mt-4 w-full flex flex-col items-center gap-4">

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, X } from 'lucide-react';
 import {
   Dialog,
@@ -16,6 +17,7 @@ const OVERVIEW_SECTION_ID = 1;
 const INCOME_SECTION_ID = 2;
 const ENVELOPES_SECTION_ID = 3;
 const ACCESSIBILITY_SECTION_ID = 5;
+const TOUR_VIEWPORT_GAP_PX = 12;
 
 type OnboardingStatus = 'started' | 'completed' | 'skipped';
 type TourPanelMode = 'instruction' | 'waiting' | 'confirm';
@@ -25,7 +27,6 @@ interface TourStep {
   title: string;
   body: string;
   sectionId: number | null;
-  target: string;
   actionLabel: string;
   doneLabel: string;
 }
@@ -36,7 +37,6 @@ const steps: TourStep[] = [
     title: 'Start with the section picker',
     body: 'The wheel or card bar is your map. Open Income first so you can see where money coming in belongs.',
     sectionId: INCOME_SECTION_ID,
-    target: '[data-onboarding-target="feature-navigation"]',
     actionLabel: 'Open Income',
     doneLabel: 'I found Income',
   },
@@ -45,7 +45,6 @@ const steps: TourStep[] = [
     title: 'Income powers the budget',
     body: 'Income is where paychecks, side work, and other inflows go. Once you have opened it, confirm and we will move on.',
     sectionId: INCOME_SECTION_ID,
-    target: '[data-onboarding-target="section-content"]',
     actionLabel: 'Open Income',
     doneLabel: 'I understand Income',
   },
@@ -54,7 +53,6 @@ const steps: TourStep[] = [
     title: 'Envelopes organize spending',
     body: 'Open Envelopes & Expenses. This is where categories, limits, and day-to-day expenses live.',
     sectionId: ENVELOPES_SECTION_ID,
-    target: '[data-onboarding-target="feature-navigation"]',
     actionLabel: 'Open Envelopes',
     doneLabel: 'I found Envelopes',
   },
@@ -63,7 +61,6 @@ const steps: TourStep[] = [
     title: 'Overview shows the big picture',
     body: 'Open Overview to see totals, remaining money, and the health of the current budget period.',
     sectionId: OVERVIEW_SECTION_ID,
-    target: '[data-onboarding-target="feature-navigation"]',
     actionLabel: 'Open Overview',
     doneLabel: 'I checked Overview',
   },
@@ -72,7 +69,6 @@ const steps: TourStep[] = [
     title: 'Accessibility is built in',
     body: 'Open Accessibility to see text, motion, contrast, and layout controls you can tune anytime.',
     sectionId: ACCESSIBILITY_SECTION_ID,
-    target: '[data-onboarding-target="feature-navigation"]',
     actionLabel: 'Open Accessibility',
     doneLabel: 'I found Accessibility',
   },
@@ -81,7 +77,6 @@ const steps: TourStep[] = [
     title: 'Settings holds data and preferences',
     body: 'Open Settings to find backups, sample data, appearance, and the opt-in feature switches.',
     sectionId: SETTINGS_SECTION_ID,
-    target: '[data-onboarding-target="feature-navigation"]',
     actionLabel: 'Open Settings',
     doneLabel: 'I found Settings',
   },
@@ -90,7 +85,6 @@ const steps: TourStep[] = [
     title: 'Additional features are opt-in',
     body: 'Transactions, Receipt Scanner, Calendar, Analytics, Cache the Coyote, and Glossary can be turned on in Settings when you want them.',
     sectionId: SETTINGS_SECTION_ID,
-    target: '[data-onboarding-target="section-content"]',
     actionLabel: 'Open Settings',
     doneLabel: 'Finish tour',
   },
@@ -162,9 +156,11 @@ export function GuidedOnboarding({
   const [tourActive, setTourActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [panelMode, setPanelMode] = useState<TourPanelMode>('instruction');
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [coachInsets, setCoachInsets] = useState({ bottom: 16, left: 12, right: 12 });
+  const [coachAnchor, setCoachAnchor] = useState<HTMLElement | null>(null);
   const step = steps[stepIndex];
   const taskComplete = step.sectionId == null || selectedSection === step.sectionId;
+  const progressPercent = Math.round(((stepIndex + 1) / steps.length) * 100);
 
   useEffect(() => {
     const sessionTour = readSessionTourState();
@@ -187,32 +183,6 @@ export function GuidedOnboarding({
       setPanelMode('confirm');
     }
   }, [panelMode, taskComplete, tourActive]);
-
-  const updateTargetRect = useCallback(() => {
-    if (!tourActive || !step) {
-      setTargetRect(null);
-      return;
-    }
-    const el = document.querySelector(step.target);
-    if (!el) {
-      setTargetRect(null);
-      return;
-    }
-    setTargetRect(el.getBoundingClientRect());
-  }, [step, tourActive]);
-
-  useEffect(() => {
-    updateTargetRect();
-    if (!tourActive) return;
-    window.addEventListener('resize', updateTargetRect);
-    window.addEventListener('scroll', updateTargetRect, true);
-    const timer = window.setInterval(updateTargetRect, 500);
-    return () => {
-      window.removeEventListener('resize', updateTargetRect);
-      window.removeEventListener('scroll', updateTargetRect, true);
-      window.clearInterval(timer);
-    };
-  }, [tourActive, updateTargetRect, selectedSection]);
 
   const finish = useCallback(
     (status: OnboardingStatus) => {
@@ -261,17 +231,174 @@ export function GuidedOnboarding({
   };
 
   const hidePromptTemporarily = () => {
-    setPanelMode(taskComplete ? 'confirm' : 'waiting');
+    setPanelMode('waiting');
   };
 
-  const panelPosition = useMemo(() => {
-    if (!targetRect) return 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2';
-    const roomBelow = window.innerHeight - targetRect.bottom;
-    const roomRight = window.innerWidth - targetRect.right;
-    if (roomRight > 360) return 'right-6 top-1/2 -translate-y-1/2';
-    if (roomBelow > 220) return 'left-1/2 bottom-6 -translate-x-1/2';
-    return 'left-1/2 top-6 -translate-x-1/2';
-  }, [targetRect]);
+  const updateCoachInsets = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    let bottom = 16;
+    let left = 12;
+    let right = 12;
+
+    document.querySelectorAll<HTMLElement>('[data-tour-avoid]').forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      if (rect.bottom >= window.innerHeight - 2) {
+        bottom = Math.max(bottom, window.innerHeight - rect.top + TOUR_VIEWPORT_GAP_PX);
+      }
+      if (rect.left <= 2) {
+        left = Math.max(left, rect.right + TOUR_VIEWPORT_GAP_PX);
+      }
+      if (rect.right >= window.innerWidth - 2) {
+        right = Math.max(right, window.innerWidth - rect.left + TOUR_VIEWPORT_GAP_PX);
+      }
+    });
+
+    setCoachInsets((current) =>
+      current.bottom === bottom && current.left === left && current.right === right
+        ? current
+        : { bottom, left, right }
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!tourActive || coachAnchor) return;
+
+    updateCoachInsets();
+    window.addEventListener('resize', updateCoachInsets);
+    window.addEventListener('scroll', updateCoachInsets, true);
+    const timer = window.setInterval(updateCoachInsets, 500);
+
+    return () => {
+      window.removeEventListener('resize', updateCoachInsets);
+      window.removeEventListener('scroll', updateCoachInsets, true);
+      window.clearInterval(timer);
+    };
+  }, [coachAnchor, tourActive, updateCoachInsets]);
+
+  useLayoutEffect(() => {
+    if (!tourActive) {
+      setCoachAnchor(null);
+      return;
+    }
+    setCoachAnchor(document.querySelector<HTMLElement>('[data-guided-onboarding-anchor]'));
+  }, [tourActive]);
+
+  const coachBar = panelMode === 'waiting' ? (
+    <div
+      className="pointer-events-auto mx-auto flex w-full max-w-[38rem] flex-col gap-3 rounded-2xl border border-primary/20 bg-card/95 p-3 text-left shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+      role="status"
+      aria-label="Guided tour step in progress"
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
+          Tour step in progress
+        </p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Open the section, then continue when you&apos;re ready.
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setPanelMode(taskComplete ? 'confirm' : 'instruction')}
+        >
+          Show guide
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={skipTour}>
+          Skip tour
+        </Button>
+      </div>
+    </div>
+  ) : (
+    <div
+      className="pointer-events-auto mx-auto w-full max-w-[38rem] rounded-2xl border border-primary/20 bg-card/95 p-4 text-left shadow-xl backdrop-blur"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="guided-onboarding-title"
+      aria-describedby="guided-onboarding-description"
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">
+            Step {stepIndex + 1} of {steps.length}
+          </p>
+          <h2 id="guided-onboarding-title" className="mt-1 text-base font-semibold text-foreground">
+            {step.title}
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={hidePromptTemporarily}
+          className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Hide guided tour prompt"
+          title="Hide this prompt while you try the task"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-primary/15" aria-hidden>
+        <div
+          className="h-full rounded-full bg-primary transition-[width]"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+      <p id="guided-onboarding-description" className="text-sm leading-relaxed text-muted-foreground">
+        {step.body}
+      </p>
+      {panelMode === 'confirm' && (
+        <p className="mt-2 text-xs font-medium text-primary">
+          You&apos;re in the right section. Continue when you&apos;re ready.
+        </p>
+      )}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="outline" onClick={goToStepTarget}>
+          {step.actionLabel}
+        </Button>
+        <Button type="button" onClick={advance} disabled={!taskComplete}>
+          {taskComplete && <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />}
+          {step.doneLabel}
+        </Button>
+      </div>
+      <div className="mt-3 flex justify-end">
+        <Button type="button" variant="ghost" size="sm" onClick={skipTour}>
+          Skip tour
+        </Button>
+      </div>
+      {!taskComplete && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Open this section, then continue when you are ready.
+        </p>
+      )}
+    </div>
+  );
+
+  const coachHost = tourActive && step
+    ? coachAnchor
+      ? createPortal(
+          <div className="w-full" aria-live="polite">
+            {coachBar}
+          </div>,
+          coachAnchor
+        )
+      : (
+          <div
+            className="pointer-events-none fixed z-[120]"
+            style={{
+              left: coachInsets.left,
+              right: coachInsets.right,
+              bottom: `calc(${coachInsets.bottom}px + env(safe-area-inset-bottom, 0px))`,
+            }}
+            aria-live="polite"
+          >
+            {coachBar}
+          </div>
+        )
+    : null;
 
   return (
     <>
@@ -294,73 +421,7 @@ export function GuidedOnboarding({
         </DialogContent>
       </Dialog>
 
-      {tourActive && step && panelMode !== 'waiting' && (
-        <div className="fixed inset-0 z-[120] pointer-events-none" aria-live="polite">
-          <div className="absolute inset-0 bg-background/25 backdrop-blur-[1px]" />
-          {targetRect && (
-            <div
-              className="absolute rounded-2xl border-2 border-primary shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_32px_rgba(45,122,63,0.45)] transition-all"
-              style={{
-                left: Math.max(8, targetRect.left - 8),
-                top: Math.max(8, targetRect.top - 8),
-                width: Math.min(window.innerWidth - 16, targetRect.width + 16),
-                height: Math.min(window.innerHeight - 16, targetRect.height + 16),
-              }}
-            />
-          )}
-          <div
-            className={`pointer-events-auto fixed z-[121] w-[min(calc(100vw-2rem),22rem)] rounded-2xl border border-primary/25 bg-card p-4 text-left shadow-2xl ${panelPosition}`}
-            role="dialog"
-            aria-modal="false"
-            aria-labelledby="guided-onboarding-title"
-          >
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">
-                  Step {stepIndex + 1} of {steps.length}
-                </p>
-                <h2 id="guided-onboarding-title" className="mt-1 text-base font-semibold text-foreground">
-                  {step.title}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={hidePromptTemporarily}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Hide guided tour prompt"
-                title="Hide this prompt while you try the task"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
-            {panelMode === 'confirm' && (
-              <p className="mt-2 text-xs font-medium text-primary">
-                Nice, you&apos;re in the right place. Confirm when you&apos;re ready to continue.
-              </p>
-            )}
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={goToStepTarget}>
-                {step.actionLabel}
-              </Button>
-              <Button type="button" onClick={advance} disabled={!taskComplete}>
-                {taskComplete && <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />}
-                {step.doneLabel}
-              </Button>
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button type="button" variant="ghost" size="sm" onClick={skipTour}>
-                Skip tour
-              </Button>
-            </div>
-            {!taskComplete && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Use the action button or hide this prompt, try the task, and the tour will return when the step is ready.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
+      {coachHost}
     </>
   );
 }
